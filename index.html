@@ -12,6 +12,7 @@
 </head>
 <body>
 <canvas id="scene" aria-hidden="true"></canvas>
+<div id="veil" aria-hidden="true"></div>
 <div id="fallback" hidden>
   <p class="fb-note">This page draws the tower in 3D. Your browser can’t show it, so here is the story in full — nothing is missing.</p>
 </div>
@@ -20,6 +21,10 @@
   <h1>The 40-Story<br><em>Investigation Tower</em></h1>
   <p class="standfirst">Every token is a person. Every floor is one more pass of the same work. This is how one tower reads a million words — and writes back an answer.</p>
   <p class="byline">The DeepSeek-V4.1-Flash tower <span class="plaque">DeepSeek, 2026</span></p>
+  <p class="sources">
+    <a href="https://arxiv.org/abs/2511.15661" target="_blank" rel="noopener">The DeepSeek-V4.1-Flash paper</a>
+    <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">The original Transformer tower, Google 2017</a>
+  </p>
   <p class="scroll-hint">Scroll to climb</p>
 </header>
 
@@ -28,7 +33,7 @@
 <div id="floor-o-meter" aria-hidden="true"><b>0</b>Floors climbed</div>
 
 <footer class="colophon">
-  <p class="plaque glossary-note">Names, architects and years are properties of the building — not part of its name.</p>
+  <p class="glossary-note">Names, architects and years are properties of the building — not part of its name.</p>
 </footer>
 
 <script type="module" src="js/tower.js"></script>
