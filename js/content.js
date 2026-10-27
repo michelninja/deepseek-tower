@@ -40,7 +40,7 @@ export const acts = [
       "If you attached a picture, a separate annex handles it. The Foreign Media Desk cuts the image into patches and translates each one into the same 5,120-number dossier, so picture Investigators and text Investigators can ride the tower together.",
     ],
     example:
-      "The fourteen **leave the sorting table, join four lines, and walk to the counter**. Fourteen clipboards are **handed across it**. The **Ninja** from your question and the **ninja** from the link collect **identical** dossiers — nobody has told either of them which one they are. And **Tech** and **tech** are two more people holding the same numbers. Reception is where you can already see the waste: four of the fourteen are duplicates.",
+      "The fourteen **leave the sorting table, join four lines, and walk to the counter**. Fourteen clipboards are **handed across it**. The **Ninja** from your question and the **ninja** from the link collect **identical** dossiers — nobody has told either of them which one they are. And **Tech** and **tech** are two more people holding the same numbers. Reception is where you can already see the waste: two of the fourteen are exact duplicates of two others.",
     whoElse:
       "Most towers call this the embedding table and leave it at that. The DeepSeek-V4.1-Flash tower (DeepSeek, 2026) also runs a dedicated vision annex so pictures join the queue as equals.",
   },
@@ -64,6 +64,7 @@ export const acts = [
   },
   {
     id: "attention",
+    focus: "conference",
     eyebrow: "Act IV · Floor work",
     title: "The conference room",
     plaque: "64 microphones",
@@ -81,7 +82,8 @@ export const acts = [
   },
   {
     id: "clinic",
-    eyebrow: "Act V · Floor work",
+    focus: "clinic",
+    eyebrow: "Act V · Routing",
     title: "The specialist clinic",
     plaque: "384 specialists",
     floor: 14,
@@ -89,10 +91,10 @@ export const acts = [
       "Down the corridor is a clinic with 384 Specialists, one per discipline, and a General Practitioner every Investigator must see.",
       "The Triage Nurse **meets each Investigator at the door and reads their clipboard**. She does not send them to all 384 — that would take all day and cost a fortune. **She picks six** who look most useful for this particular Investigator, on this particular floor.",
       "Each Specialist is a genuine expert, but a narrow one. The General Practitioner is the opposite: broad, shallow, and always right about the basics. Everyone sees the GP; only six see a specialist.",
-      "That is the trick — the building is enormous on paper and small in practice. It owns staff worth 552 billion facts, and puts barely a third of them to work on any given Investigator.",
+      "That is the trick — the building is enormous on paper and small in practice. It owns staff worth 552 billion facts, and keeps barely a third of them on duty on any given Investigator.",
     ],
     example:
-      "The **Tech** from the question is sent to six specialists: technology, companies, proper names, brand spelling, capital letters, and what usually follows a company name. The **about** from the link is sent to a different six — pages, sites, descriptions, definitions. **.ai** is sent to a third set, about countries and domains. Fourteen people, **forty-two specialist visits in total**, all in the same corridor at the same minute.",
+      "The **Tech** from the question is sent to six specialists: technology, companies, proper names, brand spelling, capital letters, and what usually follows a company name. The **about** from the link is sent to a different six — pages, sites, descriptions, definitions. **.ai** is sent to a third set, about countries and domains. Fourteen people, **eighty-four specialist visits in total**, all in the same corridor at the same minute.",
     whoElse:
       "Other towers do hire specialists — the Mixtral tower (Mistral, 2023) is the well-known example. Very few hire 384 per floor and keep the General Practitioner permanent.",
   },
@@ -105,13 +107,13 @@ export const acts = [
     plaque: "Floors 2 and 15",
     floor: 15,
     story: [
-      "On two floors — the second and the fifteenth — the corridor is lined with lockers. Two long walls of them, and no other tower in the skyline has this room at all.",
+      "On two floors — the second and the fifteenth — the corridor is lined with lockers — a long wall of them across the whole width, and no other tower in the skyline has this room at all.",
       "**Each locker holds a ready-made note.** When an Investigator's clipboard matches a pattern the building has seen a million times before, **they open the locker and take the note** instead of thinking it out.",
       "This is the building's memory of the obvious. Idioms, common phrases, the way a name is spelled, the shape of a date. Things no one should have to reason out from scratch every single time.",
       "Memory as furniture rather than memory as staff: 196 billion notes, stored flat, costing almost nothing to keep and nothing at all to read.",
     ],
     example:
-      "**Tech** opens a locker because of its shape — capital letter, no space, stuck to a question mark — and takes the note that says *this is a company name*. **https · :// · www · .ai** each take the same note from another wall: *this is a web address*. Nobody reasons any of it out. **Four of the fourteen are settled before they reach floor 16**, purely by recognising a shape.",
+      "**Tech** opens a locker because of its shape — capital letter, no space, stuck to a question mark — and takes the note that says *this is a company name*. **https · :// · www · .ai** each open a locker lower down and take the same note: *this is a web address*. Nobody reasons any of it out. **Four of the fourteen are settled before they reach floor 16**, purely by recognising a shape.",
     whoElse:
       "Every other tower learns these patterns the slow way, in its staff's heads, where they take up room that could have been used for thinking. Lockers are the DeepSeek tower's own idea.",
   },
@@ -155,6 +157,7 @@ export const acts = [
   },
   {
     id: "library",
+    focus: "reading",
     eyebrow: "Act IX · Reading",
     title: "The local desk and the library",
     plaque: "Floor 21",
