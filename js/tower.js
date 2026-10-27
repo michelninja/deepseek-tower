@@ -64,6 +64,8 @@ function boot() {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setSize(innerWidth, innerHeight, false);
 
   const scene = new THREE.Scene();
@@ -72,9 +74,15 @@ function boot() {
   const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 400);
   camera.position.set(12, 3, 24);
 
-  scene.add(new THREE.HemisphereLight(0xfff6e8, 0x2c3240, 0.9));
+  scene.add(new THREE.HemisphereLight(0xfff6e8, 0x2c3240, 1.15));
   const sun = new THREE.DirectionalLight(0xffe9cc, 1.55);
   sun.position.set(-16, 34, 20);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -22; sun.shadow.camera.right = 22;
+  sun.shadow.camera.top = 22; sun.shadow.camera.bottom = -22;
+  sun.shadow.camera.near = 1; sun.shadow.camera.far = 90;
+  sun.shadow.normalBias = 0.02;
   scene.add(sun);
   const rim = new THREE.DirectionalLight(0x9fc6d8, 0.6);
   rim.position.set(20, 14, -22);
@@ -142,8 +150,8 @@ function boot() {
   const lockerBox = new THREE.BoxGeometry(0.24, 0.42, 0.07);
   const lockerNote = new THREE.BoxGeometry(0.16, 0.28, 0.012);
   const noteMat = new THREE.MeshStandardMaterial({ color: 0xe8b06a, emissive: 0xffb066, emissiveIntensity: .9, roughness: .4 });
-  const lockers = new THREE.InstancedMesh(lockerBox, lockerMat, LOCKER_FLOORS.length * 48);
-  const notes = new THREE.InstancedMesh(lockerNote, noteMat, LOCKER_FLOORS.length * 48);
+  const lockers = new THREE.InstancedMesh(lockerBox, lockerMat, LOCKER_FLOORS.length * 12);
+  const notes = new THREE.InstancedMesh(lockerNote, noteMat, LOCKER_FLOORS.length * 12);
   tower.add(lockers, notes);
 
   /* the archive: deep banks of drawers, each one holding the envelopes */
@@ -187,7 +195,7 @@ function boot() {
         fit.rotation.set(0, 0, 0); fit.scale.setScalar(1); fit.updateMatrix();
         drawers.setMatrixAt(di++, fit.matrix);
         if ((row + col) % 4 === 0 && ei < 24) {
-          fit.position.set(x, y + 0.02, -D * 0.30);
+          fit.position.set(x, y + 0.02, -D * 0.38 + 0.10);
           fit.rotation.set(-0.5, 0, 0); fit.updateMatrix();
           envelopes.setMatrixAt(ei++, fit.matrix);
         }
@@ -209,13 +217,13 @@ function boot() {
     const plateMat = new THREE.MeshStandardMaterial({ color: 0xf0e5cf, roughness: .5 });
     for (let k = 0; k < 12; k += 2) {
       const pl = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.022, 0.01), plateMat);
-      pl.position.set(-W * 0.46 + k * 0.21, a18 + 0.44, -D * 0.287);
+      pl.position.set(-W * 0.46 + k * 0.21, a18 + 0.14, -D * 0.38 + 0.092);
       tower.add(pl);
     }
   }
 
   /* a highlight band around each highlighted floor, brightened while its act is on */
-  const HILITE = { 2: "engram", 15: "engram", 18: "archive", 20: "blockade", 40: "roof" };
+  const HILITE = { 2: "engram", 15: "engram", 18: "archive", 20: "blockade", 39: "roof" };
   const bands = Object.keys(HILITE).map((k) => {
     const fl = Number(k);
     const mat = new THREE.MeshBasicMaterial({ color: 0xc8553d, transparent: true, opacity: 0.12 });
@@ -240,19 +248,22 @@ function boot() {
   flSign("LOCKERS", 2, "#2b6a72");
   flSign("LOCKERS", 15, "#2b6a72");
   flSign("ARCHIVE", 18, "#c8553d");
-  flSign("ELEVATORS", 3, "#1f4e5f");
+  flSign("ELEVATORS", 0, "#1f4e5f");
 
   /* floor numbers on the left flank, every fifth storey, so the climb is legible */
   for (let i = 5; i <= FLOORS; i += 5) {
     const plaque = sign(String(i), 0.5, 0.26, "#5a5344");
-    plaque.position.set(-W * 0.5 - 0.02, i * FH - FH * 0.35, D * 0.42);
+    plaque.position.set(-W * 0.5 - 0.02, i * FH + FH * 0.45, D * 0.42);
     plaque.rotation.y = -Math.PI / 2;
     tower.add(plaque);
   }
 
   const furn = new THREE.Object3D();
   const DECK = FH * 0.07;                 // top surface of a slab
+  // acts 8 / 14 / 21 fix up their own furniture, so skip the generic rows there
+  const STAGED = new Set([8, 14, 21]);
   for (let i = 0; i < FLOORS; i++) {
+    if (STAGED.has(i)) continue;
     const deck = i * FH + DECK;
     for (let k = 0; k < 4; k++) {
       const x = -W * 0.32 + k * (W * 0.21);
@@ -271,8 +282,8 @@ function boot() {
   }
 
   /* lamps at the open front, so the rooms are not shadow boxes */
-  for (let i = 1; i < FLOORS; i += 4) {
-    const lamp = new THREE.PointLight(0xffeed6, 0.55, 15, 2);
+  for (let i = 1; i < FLOORS; i += 2) {
+    const lamp = new THREE.PointLight(0xffeed6, 0.7, 17, 2);
     lamp.position.set(0, i * FH + FH * 0.5, D * 0.34);
     tower.add(lamp);
   }
@@ -286,7 +297,7 @@ function boot() {
   ground.position.y = -0.05;
   scene.add(ground);
 
-  const Y0 = 0.14;                       // eye level of a person on floor 0
+  const Y0 = FH * 0.07;                  // floor-0 slab top, so nothing floats
   const DOOR_Z = D * 0.5 + 1.1;
   const DOOR_X = 1.9;
 
@@ -360,16 +371,27 @@ function boot() {
   tower.add(sRecep);
 
   /* four shafts, and a lit cabin riding in each */
-  const SHAFT_X = [0.35, 1.35, 2.35, 3.35];
+  const SHAFT_X = [-0.75, 0.15, 1.05, 1.95];   // keeps every rail inside the shell
   const SHAFT_Z = -D * 0.22;
   const shaftMat = new THREE.MeshStandardMaterial({ color: 0xb9b2a2, roughness: .8, metalness: .1 });
-  SHAFT_X.forEach((x) => {
-    for (const sx of [-0.34, 0.34]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.085, towerH, 0.085), shaftMat);
-      rail.position.set(x + sx, towerH * 0.5, SHAFT_Z);
-      tower.add(rail);
-    }
-  });
+  /* rail segments run storey by storey, between the slabs — no bars sawing through floors */
+  {
+    const segH = FH * 0.86;
+    const railGeo = new THREE.BoxGeometry(0.085, segH, 0.085);
+    const railInst = new THREE.InstancedMesh(railGeo, shaftMat, SHAFT_X.length * 2 * FLOORS);
+    const fit = new THREE.Object3D();
+    let ri = 0;
+    SHAFT_X.forEach((x) => {
+      for (const sx of [-0.34, 0.34]) {
+        for (let i = 0; i < FLOORS; i++) {
+          fit.position.set(x + sx, i * FH + FH * 0.5, SHAFT_Z);
+          fit.rotation.set(0, 0, 0); fit.scale.setScalar(1); fit.updateMatrix();
+          railInst.setMatrixAt(ri++, fit.matrix);
+        }
+      }
+    });
+    tower.add(railInst);
+  }
   const cabMat = new THREE.MeshStandardMaterial({
     color: 0xf4e9d2, roughness: .35, metalness: .25,
     emissive: 0xffcf85, emissiveIntensity: .95,
@@ -403,10 +425,14 @@ function boot() {
   const headMat = new THREE.MeshStandardMaterial({ color: 0xe8b98f, roughness: .7, metalness: .02 });
   const bodies = new THREE.InstancedMesh(bodyGeo, skinMat, COUNT);
   const heads = new THREE.InstancedMesh(headGeo, headMat, COUNT);
-  const dossierGeo = new THREE.BoxGeometry(0.09, 0.012, 0.065);
+  const dossierGeo = new THREE.BoxGeometry(0.15, 0.016, 0.105);
   const dossierMat = new THREE.MeshStandardMaterial({ color: 0xc8553d, roughness: .5, metalness: .15 });
   const dossiers = new THREE.InstancedMesh(dossierGeo, dossierMat, COUNT);
   tower.add(bodies, heads, dossiers);
+
+  /* the fourteen tokens, in the order the prompt splits into them */
+  const TOKENS = ["What", "is", "Ninja", "Tech", "?", "https", "://", "www", ".",
+                  "ninja", "tech", ".ai", "/", "about"];
 
   const invData = Array.from({ length: COUNT }, (_, i) => ({
     lane: i % 4,
@@ -414,6 +440,14 @@ function boot() {
     slot: Math.floor(i / 4) % 9,
     seed: Math.random() * 100,
   }));
+
+  /* one small name tag above every Investigator, so you can read who is who */
+  const tags = TOKENS.map((tok) => {
+    const t = sign(tok, Math.max(0.34, tok.length * 0.075), 0.135, "#1f4e5f");
+    t.renderOrder = 4;
+    tower.add(t);
+    return t;
+  });
 
   /* --- the reception clerk and two mailroom staff --- */
   function person(x, z, y, colour) {
@@ -461,7 +495,7 @@ function boot() {
     // floor 14: the clinic — a GP's desk and rows of specialist booths
     const cd = 14 * FH + FH * 0.07;
     const gpDesk = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.14, 0.4), woodMat);
-    gpDesk.position.set(W * 0.16, cd + 0.07, D * 0.10);
+    gpDesk.position.set(W * 0.16, cd + 0.20, D * 0.10);
     tower.add(gpDesk);
     const gpTop = new THREE.MeshStandardMaterial({ color: 0x6b4a30, roughness: .7 });
     const gpLeg = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: .9 });
@@ -471,10 +505,10 @@ function boot() {
       tower.add(leg);
     }
     const gpBlotter = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.012, 0.14), gpTop);
-    gpBlotter.position.set(W * 0.16, cd + 0.147, D * 0.10);
+    gpBlotter.position.set(W * 0.16, cd + 0.277, D * 0.10);
     tower.add(gpBlotter);
     const sGP = sign("GP", 0.55, 0.3, "#c8553d");
-    sGP.position.set(W * 0.16, cd + 0.30, D * 0.10);
+    sGP.position.set(W * 0.16, cd + 0.46, D * 0.10);
     tower.add(sGP);
     /* each booth is a partition with a little lit counter — a place you queue at */
     const boothMat = new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: .8 });
@@ -503,17 +537,23 @@ function boot() {
     /* library stacks: bookcases with rows of coloured spines */
     const shelfMat = new THREE.MeshStandardMaterial({ color: 0x8a7a5e, roughness: .85 });
     const spineColours = [0xc8553d, 0x2b6a72, 0xd9b26a, 0x4a5b7a];
+    for (let r = 0; r < 2; r++) {
+      for (let k = 0; k < 4; k++) {
+        const sx = -W * 0.26 + k * 0.34;
+        const sz = -D * 0.20 + r * 0.30;
+        const case_ = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.16), shelfMat);
+        case_.position.set(sx, rd + 0.2, sz);
+        tower.add(case_);
+      }
+    }
     spineColours.forEach((c, ci) => {
       const spineMat = new THREE.MeshStandardMaterial({ color: c, roughness: .8 });
       for (let r = 0; r < 2; r++) {
         for (let k = 0; k < 4; k++) {
           const sx = -W * 0.26 + k * 0.34;
           const sz = -D * 0.20 + r * 0.30;
-          const case_ = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.16), shelfMat);
-          case_.position.set(sx, rd + 0.2, sz);
-          tower.add(case_);
-          const spines = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), spineMat);
-          spines.position.set(sx, rd + 0.16 + ci * 0.09, sz + 0.09);
+          const spines = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.055, 0.02), spineMat);
+          spines.position.set(sx, rd + 0.12 + ci * 0.075, sz + 0.09);
           tower.add(spines);
         }
       }
@@ -525,12 +565,12 @@ function boot() {
 
   /* --- the roof: a press conference, a one-way mirror, an intern's desk --- */
   {
-    const deck = 40 * FH + FH * 0.07;
+    const deck = 39 * FH + FH * 0.07;
     const podium = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.34, 0.42), woodMat);
     podium.position.set(0, deck + 0.17, -D * 0.24);
     tower.add(podium);
     const sPodium = sign("PRESS", 0.75, 0.19, "#c8553d");
-    sPodium.position.set(0, deck + 0.3, -D * 0.02);
+    sPodium.position.set(0, deck + 0.34, -D * 0.24 + 0.23);
     tower.add(sPodium);
 
     // a row of microphones on the podium
@@ -554,9 +594,15 @@ function boot() {
     const intern = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.36), woodMat);
     intern.position.set(W * 0.28, deck + 0.15, D * 0.1);
     tower.add(intern);
-    const draftMat = new THREE.MeshStandardMaterial({ color: 0xf1e4c8, roughness: .8 });
+    const sWin = sign("NinjaTech", 1.9, 0.46, "#c8553d");
+    sWin.position.set(0, deck + 0.92, -D * 0.44);
+    tower.add(sWin);
+    const draftMat = new THREE.MeshStandardMaterial({ color: 0xc9bfa8, roughness: .85 });
+    const winMat = new THREE.MeshStandardMaterial({
+      color: 0xfff3d8, roughness: .4, emissive: 0xffb347, emissiveIntensity: .55 });
     for (let k = 0; k < 5; k++) {
-      const card = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.008, 0.13), draftMat);
+      const card = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.008, 0.13),
+        k === 2 ? winMat : draftMat);
       card.position.set(W * 0.28 - 0.16 + k * 0.08, deck + 0.31, D * 0.1);
       card.rotation.y = (k - 2) * 0.1;
       tower.add(card);
@@ -565,6 +611,7 @@ function boot() {
     tower.add(person(-1.5, D * 0.24, deck, 0x3b5a63));     // reporters
     tower.add(person(-0.9, D * 0.28, deck, 0x3b5a63));
     tower.add(person(1.2, D * 0.26, deck, 0x3b5a63));
+    tower.add(person(W * 0.28 - 0.05, D * 0.1 + 0.30, deck, 0x6a5a8c));  // the intern drafting
   }
 
   const dummy = new THREE.Object3D();
@@ -583,12 +630,15 @@ function boot() {
   /* map scroll position to a fractional floor, interpolating between acts */
   function actState() {
     const centre = scrollY + innerHeight / 2;
+    /* the act is the one whose card the reader is actually on: it changes when a
+       card's top reaches the middle of the screen, not when its centre does —
+       otherwise the shot plays for the act below the one you are reading. */
     let i = 0;
-    for (let k = 0; k < marks.length; k++) if (centre >= marks[k].mid - innerHeight * 0.5) i = k;
+    for (let k = 0; k < marks.length; k++) if (centre >= marks[k].top) i = k;
     const a = acts[i], b = acts[Math.min(i + 1, acts.length - 1)];
-    if (a === b) return { i, frac: 0, floor: a.floor / 40 };
-    const span = marks[Math.min(i + 1, marks.length - 1)].mid - marks[i].mid;
-    const f = span > 0 ? Math.min(1, Math.max(0, (centre - marks[i].mid) / span)) : 0;
+    const mk = marks[i];
+    const f = Math.min(1, Math.max(0, (centre - mk.top) / Math.max(1, mk.bot - mk.top)));
+    if (a === b) return { i, frac: f, floor: a.floor / 40 };
     return { i, frac: f, floor: (a.floor + (b.floor - a.floor) * f) / 40 };
   }
   function actProgress() { return actState().floor; }
@@ -598,47 +648,49 @@ function boot() {
      you stand on the street, you walk in, and only then do you see the mailroom. */
   const VIEWS = {
     // fl pins the camera to the act's real floor. at: 0 → 1 is the act's own progress.
+    // A storey is only FH (0.62) tall, so eyes sit ~0.40 up and aims ~0.28 up:
+    // higher than that and you are looking at the ceiling slab, not the room.
     lobby: { fl: 0, path: [
-      { at: 0.00, eye: [ 5.35, 1.62, 9.75], aim: [ 1.90, 1.10, 3.45] }, // out on the street, facing the entrance
-      { at: 0.42, eye: [ 2.35, 1.35, 3.05], aim: [ 1.85, 0.60, 1.55] }, // through the door, looking at the sorting table
-      { at: 1.00, eye: [ 3.05, 1.15, 3.55], aim: [ 1.62, 0.50, 1.45] }, // the mailroom, and the queue forming below it
+      { at: 0.00, eye: [ 5.10, 1.00,  8.90], aim: [ 1.90, 0.62,  3.20] }, // out on the street, facing the entrance
+      { at: 0.42, eye: [ 2.55, 0.60,  2.85], aim: [ 1.80, 0.32,  1.62] }, // stepping through the door
+      { at: 1.00, eye: [ 2.85, 0.56,  3.05], aim: [ 1.76, 0.30,  1.62] }, // the sorting table, and the queue beside it
     ] },
     reception: { fl: 0, path: [
-      { at: 0.00, eye: [ 2.90, 1.30, 4.55], aim: [ 0.55, 0.42, 1.35] }, // the queue, waiting its turn
-      { at: 0.55, eye: [ 0.70, 0.95, 3.35], aim: [-0.45, 0.42, 1.25] }, // walking them up to the counter
-      { at: 1.00, eye: [-0.50, 0.78, 2.60], aim: [-0.85, 0.38, 1.10] }, // the clipboard changing hands
+      { at: 0.00, eye: [ 2.90, 0.60,  4.35], aim: [ 0.55, 0.30,  1.35] }, // the queue, waiting its turn
+      { at: 0.55, eye: [ 0.70, 0.52,  3.35], aim: [-0.45, 0.28,  1.25] }, // walking them up to the counter
+      { at: 1.00, eye: [ 0.20, 0.50,  3.10], aim: [-0.55, 0.30,  1.20] }, // the clipboard changing hands
     ] },
     elevators: { fl: 0, path: [
-      { at: 0.00, eye: [ 4.35, 2.30, 5.10], aim: [ 1.90, 4.30, -0.92] }, // stand back, look up the four shafts
-      { at: 1.00, eye: [ 3.05, 3.10, 4.05], aim: [ 1.95, 5.60, -0.92] }, // ride up alongside a rising car
+      { at: 0.00, eye: [ 3.60, 0.42,  3.90], aim: [ 1.30, 2.40, -0.92] }, // inside the lobby, look up the four shafts
+      { at: 1.00, eye: [ 3.00, 1.55,  3.40], aim: [ 1.20, 4.60, -0.92] }, // ride up alongside a rising car
     ] },
     conference: { fl: 8, path: [
-      { at: 0.00, eye: [ 0.55, 0.30, 3.45], aim: [ 0.00, 0.34, -0.55] },
-      { at: 1.00, eye: [ 0.15, 0.34, 2.15], aim: [-0.10, 0.26, -0.60] }, // push in on the table and its mics
+      { at: 0.00, eye: [ 0.55, 0.46,  3.45], aim: [ 0.00, 0.26, -0.55] },
+      { at: 1.00, eye: [ 0.15, 0.42,  2.15], aim: [-0.10, 0.24, -0.60] }, // push in on the table and its mics
     ] },
     clinic: { fl: 14, path: [
-      { at: 0.00, eye: [ 0.65, 0.52, 2.75], aim: [ 0.00, 0.24, -0.50] },
-      { at: 1.00, eye: [ 0.30, 0.46, 2.00], aim: [ 0.05, 0.18, -0.55] },
+      { at: 0.00, eye: [ 0.30, 0.46,  3.30], aim: [ 0.00, 0.26, -0.50] },
+      { at: 1.00, eye: [ 0.10, 0.42,  2.50], aim: [ 0.05, 0.22, -0.55] },
     ] },
     reading: { fl: 21, path: [
-      { at: 0.00, eye: [ 0.65, 0.54, 2.70], aim: [ 0.00, 0.24, -0.50] },
-      { at: 1.00, eye: [ 0.30, 0.48, 1.95], aim: [ 0.05, 0.18, -0.55] },
+      { at: 0.00, eye: [ 0.25, 0.46,  3.20], aim: [ 0.00, 0.26, -0.50] },
+      { at: 1.00, eye: [ 0.10, 0.42,  2.40], aim: [ 0.05, 0.22, -0.55] },
     ] },
     lockers: { fl: 15, path: [
-      { at: 0.00, eye: [-0.95, 0.48, 3.40], aim: [ 0.00, 0.30, -0.35] },
-      { at: 1.00, eye: [ 0.00, 0.34, 3.15], aim: [ 0.00, 0.26, -0.40] }, // close on the locker doors
+      { at: 0.00, eye: [ 0.10, 0.44,  3.60], aim: [ 0.00, 0.26, -0.35] },
+      { at: 1.00, eye: [ 0.00, 0.40,  3.10], aim: [ 0.00, 0.24, -0.40] }, // close on the locker doors
     ] },
     archive: { fl: 18, path: [
-      { at: 0.00, eye: [ 1.15, 0.60, 2.15], aim: [-0.20, 0.62, -1.58] }, // the wall of drawers, wide
-      { at: 1.00, eye: [ 0.55, 0.50, 1.35], aim: [-0.30, 0.55, -1.60] },  // in on the open envelopes
+      { at: 0.00, eye: [ 1.05, 0.42,  1.75], aim: [-0.20, 0.26, -1.50] }, // the wall of drawers, wide
+      { at: 1.00, eye: [ 0.50, 0.40,  1.05], aim: [-0.30, 0.24, -1.55] }, // in on the open envelopes
     ] },
     seam: { fl: 20, path: [
-      { at: 0.00, eye: [ 3.60, 0.55, 4.10], aim: [ 0.20, 0.30, -0.60] }, // the stained floor, side on
-      { at: 1.00, eye: [ 2.35, 0.42, 3.10], aim: [ 0.00, 0.28, -0.55] },  // in on the red seam
+      { at: 0.00, eye: [ 2.60, 0.42,  3.10], aim: [ 0.20, 0.24, -0.60] }, // the stained floor, side on
+      { at: 1.00, eye: [ 1.70, 0.38,  2.20], aim: [ 0.00, 0.22, -0.55] }, // in on the red seam
     ] },
-    roof: { fl: 40, path: [
-      { at: 0.00, eye: [ 3.60, 1.85, 5.60], aim: [ 0.00, 0.30, 0.00] },
-      { at: 1.00, eye: [ 3.00, 1.40, 5.00], aim: [ 0.00, 0.30, 0.00] },
+    roof: { fl: 39, path: [
+      { at: 0.00, eye: [ 3.35, 0.62,  3.05], aim: [ 0.05, 0.34, -1.35] },
+      { at: 1.00, eye: [ 2.45, 0.58,  2.25], aim: [ 0.00, 0.32, -1.50] },
     ] },
   };
 
@@ -737,7 +789,7 @@ function boot() {
     // the card to the bottom of it, then eases back to the wide view between acts
     const c0 = scrollY + innerHeight / 2, mk = marks[st.i];
     const out = c0 < mk.top ? mk.top - c0 : (c0 > mk.bot ? c0 - mk.bot : 0);
-    const blend = Math.max(0, Math.min(1, 1 - out / (innerHeight * 0.5)));
+    const blend = Math.max(0, Math.min(1, 1 - out / (innerHeight * 0.8)));
     if (view) {
       // this act is about one specific thing: get close enough to actually see it
       const shot = shotAt(view, st.frac);
@@ -749,12 +801,20 @@ function boot() {
       );
       aimX = aimX + (shot.aim[0] - aimX) * blend;
       aimY = aimY + (vy + shot.aim[1] - aimY) * blend;
-      target.set(aimX, aimY, shot.eye[2] > 0 ? shot.aim[2] : 0);
+      target.set(aimX, aimY, shot.aim[2]);
     } else {
       target.set(aimX, aimY, 0);
     }
-    camera.position.lerp(camPos, view && blend > 0.92 ? 1 : (view ? 0.2 : 0.06));
+    /* ease in, but never lag: the further the camera has to travel, the faster it
+       closes the gap, so a jump between floors settles instead of trailing behind */
+    const travel = camera.position.distanceTo(camPos);
+    const ease = view ? Math.min(1, 0.24 + travel * 0.5) : 0.06;
+    camera.position.lerp(camPos, ease);
     camera.lookAt(target);
+    window.__cam = { eye: camPos.toArray().map(n => +n.toFixed(2)),
+                     aim: target.toArray().map(n => +n.toFixed(2)),
+                     real: camera.position.toArray().map(n => +n.toFixed(2)),
+                     blend: +blend.toFixed(2), act: act ? act.id : null, frac: +st.frac.toFixed(2) };
     }
 
     // investigators run their walk on a loop, staggered
@@ -789,6 +849,15 @@ function boot() {
     bodies.instanceMatrix.needsUpdate = true;
     heads.instanceMatrix.needsUpdate = true;
     dossiers.instanceMatrix.needsUpdate = true;
+
+    // name tags follow their Investigator and always face the camera
+    for (let i = 0; i < COUNT; i++) {
+      const d = invData[i];
+      const u = (t * 0.032 + d.phase) % 1;
+      const pos = walkPath(u, d.lane);
+      tags[i].position.set(pos.x, pos.y + 0.335, pos.z);
+      tags[i].quaternion.copy(camera.quaternion);
+    }
 
     // cabins ride the shafts
     cabs.forEach((cab, idx) => {
