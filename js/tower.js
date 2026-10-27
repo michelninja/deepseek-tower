@@ -131,6 +131,102 @@ function boot() {
     new THREE.MeshStandardMaterial({ color: 0xa9927a, roughness: .8 }), FLOORS * 6);
   tower.add(deskInst, chairInst, cabInst);
 
+  /* --- special floors: the two locker storeys and the Archive --- */
+  const LOCKER_FLOORS = [2, 15];
+  const ARCHIVE_FLOOR = 18;
+  const lockerMat = new THREE.MeshStandardMaterial({
+    color: 0x35424a, roughness: .35, metalness: .55,
+    emissive: 0x16343a, emissiveIntensity: .25,
+  });
+  const narrowMat = new THREE.MeshStandardMaterial({ color: 0x8f9aa0, roughness: .55, metalness: .3 });
+  const lockerBox = new THREE.BoxGeometry(0.24, 0.42, 0.07);
+  const lockerNote = new THREE.BoxGeometry(0.16, 0.28, 0.012);
+  const noteMat = new THREE.MeshStandardMaterial({ color: 0xe8b06a, emissive: 0xffb066, emissiveIntensity: .9, roughness: .4 });
+  const lockers = new THREE.InstancedMesh(lockerBox, lockerMat, LOCKER_FLOORS.length * 48);
+  const notes = new THREE.InstancedMesh(lockerNote, noteMat, LOCKER_FLOORS.length * 48);
+  tower.add(lockers, notes);
+
+  /* the archive: deep banks of drawers, each one holding the envelopes */
+  const drawerMat = new THREE.MeshStandardMaterial({ color: 0xa98f6b, roughness: .8, metalness: .05 });
+  const drawerGeo = new THREE.BoxGeometry(0.26, 0.13, 0.18);
+  const envGeo = new THREE.BoxGeometry(0.15, 0.1, 0.014);
+  const envMat = new THREE.MeshStandardMaterial({ color: 0xd9c8a8, roughness: .85 });
+  const drawers = new THREE.InstancedMesh(drawerGeo, drawerMat, 72);
+  const envelopes = new THREE.InstancedMesh(envGeo, envMat, 36);
+  tower.add(drawers, envelopes);
+
+  {
+    const fit = new THREE.Object3D();
+    let li = 0;
+    LOCKER_FLOORS.forEach((fl) => {
+      const deck = fl * FH + FH * 0.07;
+      // one long bank of lockers right at the open front, so nothing hides it
+      for (let k = 0; k < 12; k++) {
+        const x = -W * 0.44 + k * 0.26;
+        const z = -D * 0.08;
+        fit.position.set(x, deck + 0.21, z);
+        fit.rotation.set(0, 0, 0);
+        fit.scale.setScalar(1); fit.updateMatrix();
+        lockers.setMatrixAt(li, fit.matrix);
+        // half of them have a lit note stuck to the door
+        fit.position.set(x, deck + 0.22, z + 0.045);
+        fit.scale.setScalar(k % 2 === 0 ? 1 : 0.001);
+        fit.updateMatrix();
+        notes.setMatrixAt(li, fit.matrix);
+        li++;
+      }
+    });
+    // drawers + envelopes on the Archive floor
+    const deck18 = ARCHIVE_FLOOR * FH + FH * 0.07;
+    let di = 0, ei = 0;
+    for (let row = 0; row < 6; row++) {
+      for (let col = 0; col < 12; col++) {
+        const x = -W * 0.46 + col * 0.21;
+        const y = deck18 + 0.07 + row * 0.14;
+        fit.position.set(x, y, -D * 0.38);
+        fit.rotation.set(0, 0, 0); fit.scale.setScalar(1); fit.updateMatrix();
+        drawers.setMatrixAt(di++, fit.matrix);
+        if ((row + col) % 4 === 0 && ei < 36) {
+          fit.position.set(x, y + 0.02, -D * 0.30);
+          fit.rotation.set(-0.5, 0, 0); fit.updateMatrix();
+          envelopes.setMatrixAt(ei++, fit.matrix);
+        }
+      }
+    }
+    for (; ei < 36; ei++) {
+      fit.position.set(0, -50, 0); fit.scale.setScalar(0.001); fit.updateMatrix();
+      envelopes.setMatrixAt(ei, fit.matrix);
+    }
+  }
+
+  /* a highlight band around each highlighted floor, brightened while its act is on */
+  const HILITE = { 2: "engram", 15: "engram", 18: "archive", 20: "blockade", 40: "roof" };
+  const bands = Object.keys(HILITE).map((k) => {
+    const fl = Number(k);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xc8553d, transparent: true, opacity: 0.12 });
+    const band = new THREE.Mesh(new THREE.BoxGeometry(W * 1.02, 0.03, D * 1.02), mat);
+    band.position.set(0, fl * FH + FH * 0.07, 0);
+    tower.add(band);
+    return { fl, mat, act: HILITE[k] };
+  });
+
+  /* name the special floors on the building itself */
+  const flSign = (text, fl, ink) => {
+    const pl = sign(text, 1.15, 0.26, ink);
+    pl.position.set(W * 0.5 + 0.03, fl * FH + FH * 0.45, -D * 0.1);
+    pl.rotation.y = Math.PI / 2;
+    tower.add(pl);
+  };
+  LOCKER_FLOORS.concat([ARCHIVE_FLOOR]).forEach((fl) => {
+    const glow = new THREE.PointLight(0xffc98a, 1.4, 9, 2);
+    glow.position.set(0, fl * FH + FH * 0.55, D * 0.22);
+    tower.add(glow);
+  });
+  flSign("LOCKERS", 2, "#2b6a72");
+  flSign("LOCKERS", 15, "#2b6a72");
+  flSign("ARCHIVE", 18, "#c8553d");
+  flSign("ELEVATORS", 3, "#1f4e5f");
+
   /* floor numbers on the left flank, every fifth storey, so the climb is legible */
   for (let i = 5; i <= FLOORS; i += 5) {
     const plaque = sign(String(i), 0.5, 0.26, "#5a5344");
@@ -261,9 +357,16 @@ function boot() {
   });
   const cabMat = new THREE.MeshStandardMaterial({
     color: 0xf4e9d2, roughness: .35, metalness: .25,
-    emissive: 0xffd9a0, emissiveIntensity: .45,
+    emissive: 0xffcf85, emissiveIntensity: .95,
   });
-  const cabGeo = new THREE.BoxGeometry(0.62, 0.46, 0.62);
+  const cabGeo = new THREE.BoxGeometry(0.6, 0.54, 0.6);
+  const parkedMat = new THREE.MeshStandardMaterial({
+    color: 0xfff3d8, roughness: .3, metalness: .2,
+    emissive: 0xffcf85, emissiveIntensity: 1.15,
+  });
+  const parked = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.5, 0.56), parkedMat);
+  parked.position.set(SHAFT_X[1], 0.5, SHAFT_Z + 0.12);
+  tower.add(parked);
   const cabs = SHAFT_X.map((x) => {
     const cab = new THREE.Mesh(cabGeo, cabMat);
     cab.position.set(x, 0.4, SHAFT_Z);
@@ -315,6 +418,50 @@ function boot() {
   tower.add(person(MAIL_X - 0.42, MAIL_Z - 0.4, Y0, 0x8c3f2c));
   tower.add(person(MAIL_X + 0.42, MAIL_Z - 0.4, Y0, 0x8c3f2c));
 
+  /* --- the roof: a press conference, a one-way mirror, an intern's desk --- */
+  {
+    const deck = 40 * FH + FH * 0.07;
+    const podium = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.34, 0.42), woodMat);
+    podium.position.set(0, deck + 0.17, -D * 0.24);
+    tower.add(podium);
+    const sPodium = sign("PRESS", 0.75, 0.19, "#c8553d");
+    sPodium.position.set(0, deck + 0.3, -D * 0.02);
+    tower.add(sPodium);
+
+    // a row of microphones on the podium
+    const micMat = new THREE.MeshStandardMaterial({ color: 0x2f3a44, roughness: .4, metalness: .5 });
+    for (let k = 0; k < 5; k++) {
+      const mic = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.16, 6), micMat);
+      mic.position.set(-0.3 + k * 0.15, deck + 0.42, -D * 0.24);
+      tower.add(mic);
+    }
+    // the one-way mirror along the back wall
+    const mirror = new THREE.Mesh(
+      new THREE.BoxGeometry(W * 0.7, FH * 0.52, 0.03),
+      new THREE.MeshStandardMaterial({
+        color: 0x8fa6b0, roughness: .05, metalness: .95,
+        emissive: 0x2b4a55, emissiveIntensity: .3,
+      })
+    );
+    mirror.position.set(0, deck + 0.30, -D * 0.47);
+    tower.add(mirror);
+    // the intern's desk to one side, with five draft cards on it
+    const intern = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.36), woodMat);
+    intern.position.set(W * 0.28, deck + 0.15, D * 0.1);
+    tower.add(intern);
+    const draftMat = new THREE.MeshStandardMaterial({ color: 0xf1e4c8, roughness: .8 });
+    for (let k = 0; k < 5; k++) {
+      const card = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.008, 0.13), draftMat);
+      card.position.set(W * 0.28 - 0.16 + k * 0.08, deck + 0.31, D * 0.1);
+      card.rotation.y = (k - 2) * 0.1;
+      tower.add(card);
+    }
+    tower.add(person(0, -D * 0.28, deck, 0x8c3f2c));      // the speaker at the podium
+    tower.add(person(-1.5, D * 0.24, deck, 0x3b5a63));     // reporters
+    tower.add(person(-0.9, D * 0.28, deck, 0x3b5a63));
+    tower.add(person(1.2, D * 0.26, deck, 0x3b5a63));
+  }
+
   /* --- archive cargo, stacked along the back wall --- */
   const zipGeo = new THREE.BoxGeometry(0.1, 0.045, 0.1);
   const zipMat = new THREE.MeshStandardMaterial({ color: 0xb08a5f, roughness: .6, metalness: .1 });
@@ -335,16 +482,30 @@ function boot() {
   let marks = layoutCards();
 
   /* map scroll position to a fractional floor, interpolating between acts */
-  function actProgress() {
+  function actState() {
     const centre = scrollY + innerHeight / 2;
     let i = 0;
     for (let k = 0; k < marks.length; k++) if (centre >= marks[k].mid - innerHeight * 0.5) i = k;
     const a = acts[i], b = acts[Math.min(i + 1, acts.length - 1)];
-    if (a === b) return a.floor / 40;
+    if (a === b) return { i, frac: 0, floor: a.floor / 40 };
     const span = marks[Math.min(i + 1, marks.length - 1)].mid - marks[i].mid;
     const f = span > 0 ? Math.min(1, Math.max(0, (centre - marks[i].mid) / span)) : 0;
-    return (a.floor + (b.floor - a.floor) * f) / 40;
+    return { i, frac: f, floor: (a.floor + (b.floor - a.floor) * f) / 40 };
   }
+  function actProgress() { return actState().floor; }
+
+  /* some acts show a specific thing: those get their own camera framing */
+  const VIEWS = {
+    // eye is [x, y, z] relative to the focused floor; aim is the same, in world space
+    lobby:     { eye: [ 3.4, 1.8,  6.2], aim: [ 0.4, 0.00, 1.2] },
+    reception: { eye: [ 2.6, 1.5,  5.2], aim: [-0.4, 0.10, 1.1] },
+    elevators: { eye: [ 3.2, 1.05, 7.0], aim: [ 1.85, 3.60, -0.9] }, // step back, see shafts and cars riding
+    // eye must stay under the ceiling of the focused floor, or the slab above blocks the view
+    lockers:   { eye: [ 0.0, 0.34, 3.15], aim: [ 0.0, 0.26, -0.4] },
+    archive:   { eye: [ 0.7, 0.32, 2.95], aim: [-0.5, 0.24, -1.3] },
+    seam:      { eye: [ 2.4, 1.30, 4.4], aim: [ 0.0, 0.20, 0.0] },
+    roof:      { eye: [ 3.0, 1.40, 5.0], aim: [ 0.0, 0.30, 0.0] },
+  };
   addEventListener("resize", () => {
     marks = layoutCards();
     camera.aspect = innerWidth / innerHeight;
@@ -390,7 +551,10 @@ function boot() {
     const t = clock.getElapsedTime();
     const maxScroll = Math.max(1, document.body.scrollHeight - innerHeight);
     const p = Math.min(1, Math.max(0, scrollY / maxScroll));
-    const af = actProgress();
+    const st = actState();
+    const af = st.floor;
+    const act = acts[st.i];
+    const view = VIEWS[act && act.focus];
 
     // low over the lobby when the story is on floor 0, then climb alongside
     const towerY = af * towerH;
@@ -415,8 +579,27 @@ function boot() {
     const side = (actSide % 2 === 0 ? 1 : -1) * (innerWidth > 900 ? 1 : 0.35);
 
     camPos.set(Math.sin(orbit) * r + low * 3.0 - side * 3.4 * (1 - low), camY, Math.cos(orbit) * r);
-    camera.position.lerp(camPos, 0.055);
-    target.set(side * 2.6 * (1 - low) + low * 0.6, towerY + (wide * 6) + 0.2, 0);
+    let aimY = towerY + (wide * 6) + 0.2;
+    let aimX = side * 2.6 * (1 - low) + low * 0.6;
+
+    // full commitment while this act is the one on screen, easing off on the way out
+    const off = Math.abs(scrollY + innerHeight / 2 - marks[st.i].mid) / (innerHeight * 0.55);
+    const blend = Math.max(0, Math.min(1, 1.15 - off));
+    if (view) {
+      // this act is about one specific thing: get close enough to actually see it
+      const vy = towerY;
+      camPos.set(
+        camPos.x + (view.eye[0] - camPos.x) * blend,
+        camPos.y + (vy + view.eye[1] - camPos.y) * blend,
+        camPos.z + (view.eye[2] - camPos.z) * blend,
+      );
+      aimX = aimX + (view.aim[0] - aimX) * blend;
+      aimY = aimY + (vy + view.aim[1] - aimY) * blend;
+      target.set(aimX, aimY, view.eye[2] > 0 ? view.aim[2] : 0);
+    } else {
+      target.set(aimX, aimY, 0);
+    }
+    camera.position.lerp(camPos, view && blend > 0.92 ? 1 : (view ? 0.2 : 0.06));
     camera.lookAt(target);
     }
 
@@ -456,7 +639,7 @@ function boot() {
     // cabins ride the shafts
     cabs.forEach((cab, idx) => {
       const u = ((t * 0.035 + idx * 0.24) % 1);
-      cab.position.y = 0.3 + u * (towerH - 0.7);
+      cab.position.y = 0.35 + u * (towerH - 0.9);
     });
 
     // archive cargo along the back wall
@@ -471,6 +654,13 @@ function boot() {
       zips.setMatrixAt(i, dummy.matrix);
     }
     zips.instanceMatrix.needsUpdate = true;
+
+    // brighten the band on the floor this act is about
+    bands.forEach((b) => {
+      const isOn = act.focus && b.act === act.id && (act.floors || []).includes(b.fl);
+      const near = act.focus && b.act === act.id && Math.abs(b.fl - af * 40) < 6;
+      b.mat.opacity = isOn ? 0.34 : (near ? 0.2 : 0.09);
+    });
 
     // act entry highlight
     const centre = scrollY + innerHeight / 2;
