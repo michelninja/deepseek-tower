@@ -57,6 +57,20 @@ body{
   font-family:var(--sans);font-size:.86rem;line-height:1.6;color:var(--ink-soft);font-style:normal;
 }
 .who-else b{font-weight:600;color:var(--ink);letter-spacing:.02em;font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;display:block;margin-bottom:.4rem;color:var(--accent-2)}
+.ninja{
+  margin:1.6rem 0 0;padding:1rem 1.1rem;border-left:2px solid var(--accent);
+  background:rgba(200,85,61,.06);border-radius:0 3px 3px 0;
+  font-family:var(--sans);font-size:.88rem;line-height:1.65;color:var(--ink-soft);
+}
+.ninja b{display:block;margin-bottom:.4rem;font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+/* floor counter, top-right */
+#floor-o-meter{
+  position:fixed;top:0;right:0;z-index:4;padding:1.1rem clamp(1.25rem,3vw,2.4rem);
+  font-family:var(--sans);font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--ink-soft);pointer-events:none;transition:opacity .4s;opacity:0;
+}
+#floor-o-meter.is-on{opacity:1}
+#floor-o-meter b{font-family:var(--serif);font-size:1.5rem;letter-spacing:0;text-transform:none;color:var(--accent-2);font-weight:400;display:block;line-height:1}
 .colophon{position:relative;z-index:2;padding:8vh clamp(1.25rem,6vw,7rem) 12vh;background:var(--paper-2);border-top:1px solid var(--line);font-family:var(--sans);font-size:.85rem;color:var(--ink-soft);line-height:1.7}
 .colophon p{margin:0 0 .6rem;max-width:60ch}
 #fallback{position:relative;z-index:3;padding:2rem clamp(1.25rem,6vw,7rem);background:#fff8e6;border-bottom:1px solid var(--line);font-family:var(--sans);font-size:.9rem}
