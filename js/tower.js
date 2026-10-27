@@ -15,7 +15,7 @@ acts.forEach((a, i) => {
       <p class="eyebrow">${a.eyebrow}</p>
       <h2>${a.title}<span class="plaque">${a.plaque}</span></h2>
       ${a.story.map((p) => `<p>${p}</p>`).join("")}
-      <p class="ninja"><b>Your case file</b>${a.ninja}</p>
+      <p class="example"><b>Step by step</b>${a.example}</p>
       <p class="who-else"><b>Who else</b>${a.whoElse}</p>
     </div>`;
   main.appendChild(sec);
