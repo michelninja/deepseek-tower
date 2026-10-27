@@ -52,6 +52,8 @@ body{
 .act h2 .plaque{font-family:var(--sans);font-size:.6rem;vertical-align:middle;letter-spacing:.08em}
 .act p{font-size:clamp(1rem,1.22vw,1.14rem);line-height:1.72;color:var(--ink-soft);margin:0 0 1.05rem}
 .act p:last-of-type{margin-bottom:0}
+.act strong{font-weight:600;color:var(--ink);background:rgba(200,85,61,.09);
+  box-shadow:0 0 0 .18em rgba(200,85,61,.09);border-radius:2px}
 .who-else{
   margin:1.6rem 0 0;padding-top:1.1rem;border-top:1px solid var(--line);
   font-family:var(--sans);font-size:.86rem;line-height:1.6;color:var(--ink-soft);font-style:normal;
