@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The 40-Story Investigation Tower</title>
+<meta name="description" content="A 40-story analogy for how a transformer reads a million tokens — the DeepSeek-V4.1-Flash tower, explained.">
+<link rel="stylesheet" href="css/tower.css">
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas>
+<div id="fallback" hidden>
+  <p class="fb-note">This page draws the tower in 3D. Your browser can’t show it, so here is the story in full — nothing is missing.</p>
+</div>
+
+<header class="masthead">
+  <p class="kicker">An analogy, told from the lobby to the roof</p>
+  <h1>The 40-Story<br><em>Investigation Tower</em></h1>
+  <p class="standfirst">Every token is a person. Every floor is a room they walk through. This is how one tower reads a million words — and writes back an answer.</p>
+  <p class="byline">The DeepSeek-V4.1-Flash tower <span class="plaque">DeepSeek, 2026</span></p>
+  <p class="scroll-hint">Scroll to climb</p>
+</header>
+
+<main id="acts"></main>
+
+<footer class="colophon">
+  <p>Adapted from “The 40-Story Investigation Tower”, an analogy for transformers and DeepSeek-V4.1-Flash.</p>
+  <p class="plaque glossary-note">Names, architects and years are properties of the building — not part of its name.</p>
+</footer>
+
+<script type="module" src="js/tower.js"></script>
+</body>
+</html>
