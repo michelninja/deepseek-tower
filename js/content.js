@@ -16,6 +16,7 @@ export const acts = [
       "The building has one job: read enormous case files — up to a million words, pictures included — and write back an answer, one word at a time.",
       "Your question walks in the door and the mailroom gets to work. It slices what you wrote into sub-words. Not ideas, not sentences — sub-words, taken from an official dictionary of 129,280 entries.",
       "Each slice becomes a person. Every token is an Investigator, and they all walk into the lobby together.",
+      "Inside, they climb the same forty floors as one another. Almost every floor does the same job — read what the floor below handed up, add one note of its own, pass it on. What changes from floor to floor is rarely the job. It is who is on duty.",
       "A long case file means a very crowded lobby. A million-word file sends a million Investigators through the door at once — which is precisely why the rest of this building is designed the way it is.",
     ],
     ninja:
@@ -23,9 +24,10 @@ export const acts = [
     whoElse:
       "Every tower in the skyline does this, and has since the original Transformer tower (Google, 2017). The dictionary is the same idea everywhere; only its size changes.",
   },
+
   {
     id: "dossier",
-    eyebrow: "Act I · Reception",
+    eyebrow: "Act II · Reception",
     title: "The 5,120-number dossier",
     plaque: "Reception desk",
     floor: 0,
@@ -39,31 +41,33 @@ export const acts = [
     whoElse:
       "Most towers call this the embedding table and leave it at that. The DeepSeek-V4.1-Flash tower (DeepSeek, 2026) also runs a dedicated vision annex so pictures join the queue as equals.",
   },
+
   {
     id: "elevator",
-    eyebrow: "Act II · The climb",
+    eyebrow: "Act III · The climb",
     title: "Four elevators, not one",
     plaque: "The express shafts",
     floor: 3,
     story: [
-      "Most buildings run a single escalator. Every Investigator rides it, and at each floor the staff they meet add notes to their clipboard. Nothing is ever erased — the notes simply pile up as they climb.",
-      "The DeepSeek-V4.1-Flash tower (DeepSeek, 2026) runs four escalators side by side, and posts a switchboard clerk between floors whose only job is to reshuffle which Investigators ride which shaft.",
+      "Most buildings run a single elevator. Every Investigator rides it, and at each floor the staff they meet add notes to their clipboard. Nothing is ever erased — the notes simply pile up as they climb.",
+      "The DeepSeek-V4.1-Flash tower (DeepSeek, 2026) runs four shafts side by side, and posts a switchboard clerk on every landing whose only job is to reshuffle which Investigators ride which car.",
       "The clerk used to be slow. To decide how to reshuffle, he first had to read every clipboard — so the building made three separate trips to the filing cabinet before anyone could move up a floor. On this floor he simply reuses last floor's settings, which lets one fused shift do the whole reshuffle: read once, mix, write back once.",
       "Four shafts cost the same as one, because the building is built narrow and tall rather than wide. That choice — depth over width — is what frees up the budget for everything the upper floors do.",
     ],
     ninja:
-      "Four shafts is why a Ninja agent can keep half a million Investigators on the payroll and still answer in seconds. A single-escalator building of the same size would have to be far wider, and far slower to walk.",
+      "Four shafts is why a Ninja agent can keep half a million Investigators on the payroll and still answer in seconds. A single-elevator building of the same size would have to be far wider, and far slower to move through.",
     whoElse:
-      "One escalator is the default in every dense tower — the GPT-3 tower, the Llama-3-70B tower (Meta, 2024). Four shafts is DeepSeek's alone.",
+      "One elevator is the default in every dense tower — the GPT-3 tower, the Llama-3-70B tower (Meta, 2024). Four shafts is DeepSeek's alone.",
   },
+
   {
     id: "attention",
-    eyebrow: "Act III · Floor work",
+    eyebrow: "Act IV · Floor work",
     title: "The conference room",
     plaque: "64 microphones",
     floor: 8,
     story: [
-      "Every floor has a conference room, and this is where the actual thinking happens.",
+      "Every floor has a conference room. This is where the work happens, on every floor, the same way.",
       "Each Investigator stands up and asks a question. Not of the whole room — of the colleagues who came in before them. Nobody may question the future, so the conversation can only ever look backwards.",
       "Sixty-four microphones hang from the ceiling. Every Investigator speaks into all of them at once, and each microphone listens for a different kind of relevance: who is the subject, who is the verb, what is being referred to, what came before.",
       "The answers are tallied, and the Investigator writes a single new line on their clipboard: what the room just told them. Then everyone moves up a floor and does it again — forty times, a different conversation on each.",
@@ -73,9 +77,10 @@ export const acts = [
     whoElse:
       "The 64-microphone conference room is standard-issue in every tower — it is the original Transformer's great invention (Google, 2017). What changes between buildings is how many microphones, and how the answers are filed.",
   },
+
   {
     id: "clinic",
-    eyebrow: "Act III · Floor work",
+    eyebrow: "Act V · Floor work",
     title: "The specialist clinic",
     plaque: "384 specialists",
     floor: 14,
@@ -90,9 +95,10 @@ export const acts = [
     whoElse:
       "Other towers do hire specialists — the Mixtral tower (Mistral, 2023) is the well-known example. Very few hire 384 per floor and keep the General Practitioner permanent.",
   },
+
   {
     id: "engram",
-    eyebrow: "Act IV · The machines",
+    eyebrow: "Act VI · Memory",
     title: "The walls of lockers",
     plaque: "Floors 2 and 15",
     floor: 15,
@@ -107,43 +113,28 @@ export const acts = [
     whoElse:
       "Every other tower learns these patterns the slow way, in its staff's heads, where they take up room that could have been used for thinking. Lockers are the DeepSeek tower's own idea.",
   },
+
   {
     id: "archive",
-    eyebrow: "Act V · The Archive",
+    eyebrow: "Act VII · The Archive",
     title: "Throw the questions away",
     plaque: "The Archive",
     floor: 18,
     story: [
       "Once an Investigator has asked their question, the question is dead weight. Investigator #500 will never need to know what Investigator #5 asked — only what #5 was, and what #5 knew.",
       "So the Archive keeps the name tags and the briefing notes, and throws the questions away. That single decision is the whole revolution.",
-      "It is also why this tower can hold a million Investigators when the Llama-3-70B tower (Meta, 2024) cannot: that tower files a full-colour, 16-bit dossier for every Investigator who ever entered — 330 KB each, 43 GB for a single 128K case file. This tower files one ZIP per Investigator: 890 bytes.",
+      "It is also why this tower can hold a million Investigators when the Llama-3-70B tower (Meta, 2024) cannot: that tower files a full-colour, 16-bit dossier for every Investigator who ever entered — 330 KB each, 43 GB for a single 128K case file. This tower files one sealed envelope per Investigator: 890 bytes.",
       "The saving compounds with length. A four-times-longer case file costs this building four times as much to store, not four times twice over. That is the difference between a tower that can read a whole contract archive and one that has to stop at a chapter.",
     ],
     ninja:
-      "The ~400-page corpus files into the Archive at 890 bytes per Investigator. At 128K tokens that is roughly 114 MB in the other tower's system and under 900 KB here — the difference between a file an agent can resume between tool calls and one it has to reload from scratch.",
+      "The ~400-page corpus files into the Archive at 890 bytes per Investigator. At 128K tokens that is roughly 42 GB in the other tower's system and about 114 MB here — the difference between a file an agent can resume between tool calls and one it has to reload from scratch.",
     whoElse:
       "The Llama towers shrink the archive by sharing name tags between heads. This tower compresses each Investigator to a single sealed latent — an idea introduced by the DeepSeek-V2 tower.",
   },
-  {
-    id: "library",
-    eyebrow: "Act V · The Archive",
-    title: "The local desk and the library",
-    plaque: "Floor 21",
-    floor: 21,
-    story: [
-      "Even a compressed archive is too large to read whole. So the reading on every floor is split in two.",
-      "First the local desk: each Investigator reads the exact, uncompressed dossiers of the last 128 colleagues who walked in. This is the near neighbourhood — enough to keep the grammar straight and the pronouns pointed at the right person.",
-      "Then the central library. A Librarian scores a short search tag attached to every archived dossier and pulls only the 512 most relevant from the million behind them.",
-      "At full context an Investigator reads 640 files and never more — 128 close neighbours, 512 chosen strangers. The cost of a conversation stays flat even when the conversation is a million words long.",
-    ],
-    ninja:
-      "When the agent is asked “what did we agree about renewal?”, the Librarian pulls the renewal clause, the amendment, and the two emails that changed it — out of half a million archived Investigators. The local desk keeps the sentence readable; the library keeps the answer correct.",
-    whoElse:
-      "Most long-context towers read everything and pay for it. Sparse retrieval at this scale is the DeepSeek tower's signature.",
-  },
+
   {
     id: "blockade",
-    eyebrow: "Act VI · The blockade",
+    eyebrow: "Act VIII · The blockade",
     title: "The staircase ends at floor 20",
     plaque: "Floor 20",
     floor: 20,
@@ -158,9 +149,28 @@ export const acts = [
     whoElse:
       "No other tower blockades its own staircase. Splitting reading from writing is the CED idea, and it belongs to the DeepSeek-V4.1-Flash tower.",
   },
+
+  {
+    id: "library",
+    eyebrow: "Act IX · Reading",
+    title: "The local desk and the library",
+    plaque: "Floor 21",
+    floor: 21,
+    story: [
+      "Even a compressed archive is too large to read whole. So the reading on every floor is split in two.",
+      "First the local desk: each Investigator reads the exact, uncompressed dossiers of the last 128 colleagues who walked in. This is the near neighbourhood — enough to keep the grammar straight and the pronouns pointed at the right person.",
+      "Then the central library. A Librarian scores a short search tag attached to every archived dossier and pulls only the 512 most relevant from the million behind them.",
+      "At full context an Investigator reads 640 files and never more — 128 close neighbours, 512 chosen strangers. The cost of a conversation stays flat even when the conversation is a million words long.",
+    ],
+    ninja:
+      "When the agent is asked “what did we agree about renewal?”, the Librarian pulls the renewal clause, the amendment, and the two emails that changed it — out of half a million archived Investigators. The local desk keeps the sentence readable; the library keeps the answer correct.",
+    whoElse:
+      "Most long-context towers read everything and pay for it. Sparse retrieval at this scale is the DeepSeek tower's signature.",
+  },
+
   {
     id: "roof",
-    eyebrow: "Act VII · The roof",
+    eyebrow: "Act X · The roof",
     title: "The press conference",
     plaque: "Floor 40",
     floor: 40,
