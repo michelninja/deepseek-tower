@@ -827,11 +827,23 @@ function boot() {
      nobody is ever flying: they ride. */
   const ROOF_DECK = 39 * FH + FH * 0.07;
   const RIDE_IN = 0.55, RIDE_OUT = 0.85;
-  const CLIMB = 0.032;                   // one full round trip per ~31 seconds
+  /* --- the building is driven by the reader, not by a clock ---
+     The Investigators walk at the speed you scroll. Stop, and the lobby stops.
+     Scroll back, and they walk back. A full climb of the tower takes about four
+     turns of the page, so the queue is always visibly moving while you read. */
+  const SCROLL_TURNS = 4.85;             // trips over the whole page: ends on the roof
+  let scrollP = 0;                       // 0..1 down the page, set every frame
+  let prevScrollP = 0;
+  let travel = 0;                        // accumulated trips, never wraps
+  let glide = 0;                         // signed speed of the page, for footfalls
+
   /* a lane's clock. Up while the crew is aboard, back down once they have stepped
      out. The body's height is read from this, never interpolated on its own, so a
      rider can never drift out of the cabin carrying them. */
-  function laneClock(lane) { return (clock.getElapsedTime() * CLIMB + lane * 0.25) % 1; }
+  function laneClock(lane) {
+    const c = travel + lane * 0.07;
+    return ((c % 1) + 1) % 1;
+  }
   function cabinYFor(lane) {
     const c = laneClock(lane);
     let f;
@@ -887,6 +899,14 @@ function boot() {
     const t = clock.getElapsedTime();
     const maxScroll = Math.max(1, document.body.scrollHeight - innerHeight);
     const p = Math.min(1, Math.max(0, scrollY / maxScroll));
+    /* the Investigators are driven by the page, not by a wall clock: scrolling
+       moves them, stopping stops them, scrolling back walks them back down */
+    scrollP = p;
+    const dP = scrollP - prevScrollP;
+    prevScrollP = scrollP;
+    travel += dP * SCROLL_TURNS;
+    glide += (dP * 900 - glide) * 0.25;
+    const pace = Math.min(1, Math.abs(glide) * 8);   // 0 at rest, 1 while moving
     const st = actState();
     const af = st.floor;
     const act = acts[st.i];
@@ -961,11 +981,12 @@ function boot() {
     // investigators run their walk on a loop, staggered
     for (let i = 0; i < COUNT; i++) {
       const d = invData[i];
-      let u = (t * CLIMB + d.phase) % 1;
+      let u = (laneClock(d.lane) + d.row * 0.006) % 1;
       const pos = walkPath(u, d.lane);
-      const walking = u < 0.56;
-      const step = reduceMotion ? 0 : Math.sin(t * 9 + d.seed) * (walking ? 0.012 : 0.004);
-      const bob = walking ? Math.abs(Math.sin(t * 9 + d.seed)) * 0.012 : 0;
+      const walking = u < RIDE_IN;
+      const swing = reduceMotion ? 0 : Math.sin(t * 9 * Math.sign(glide || 1) + d.seed);
+      const step = walking * swing * 0.012 * pace;
+      const bob = walking ? Math.abs(Math.sin(t * 9 + d.seed)) * 0.012 * pace : 0;
 
       const lc = laneClock(d.lane);
       const riding = lc >= RIDE_IN && lc <= RIDE_OUT;
@@ -991,7 +1012,7 @@ function boot() {
       dossiers.setMatrixAt(i, dummy.matrix);
     }
     window.__inv = invData.map((d, i) => {
-      const u = (t * CLIMB + d.phase) % 1;
+      const u = (laneClock(d.lane) + d.row * 0.006) % 1;
       const pos = walkPath(u, d.lane);
       const lc2 = laneClock(d.lane);
       return { u: +u.toFixed(2), lane: d.lane, y: +pos.y.toFixed(2),
@@ -1005,7 +1026,7 @@ function boot() {
     // name tags follow their Investigator and always face the camera
     for (let i = 0; i < COUNT; i++) {
       const d = invData[i];
-      const u = (t * CLIMB + d.phase) % 1;
+      const u = (laneClock(d.lane) + d.row * 0.006) % 1;
       const pos = walkPath(u, d.lane);
       const lc = laneClock(d.lane);
       const ridingNow = lc >= RIDE_IN && lc <= RIDE_OUT;
