@@ -212,11 +212,29 @@ function boot() {
     }
   }
 
-  const sMail = sign("MAILROOM", 1.2, 0.3, "#c8553d");
-  sMail.position.set(DOOR_X, 1.5, DOOR_Z + 0.12);
+  /* the door itself is just the door — the mailroom is the sorting table inside */
+  const sDoor = sign("ENTRANCE", 1.0, 0.26, "#3d4353");
+  sDoor.position.set(DOOR_X, 1.42, DOOR_Z + 0.12);
+  tower.add(sDoor);
+
+  /* the mailroom: a long sorting table just inside the door, where the prompt
+     gets sliced. Investigators walk straight past it on their way to reception. */
+  const MAIL_X = 1.75, MAIL_Z = 1.62;
+  const mailTable = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.38, 0.46), woodMat);
+  mailTable.position.set(MAIL_X, Y0 + 0.19, MAIL_Z);
+  const mailTop = new THREE.Mesh(
+    new THREE.BoxGeometry(2.0, 0.05, 0.54),
+    new THREE.MeshStandardMaterial({ color: 0x6f5439, roughness: .55 })
+  );
+  mailTop.position.set(MAIL_X, Y0 + 0.41, MAIL_Z);
+  tower.add(mailTable, mailTop);
+
+  const sMail = sign("MAILROOM", 1.1, 0.26, "#c8553d");
+  sMail.position.set(MAIL_X, Y0 + 0.74, MAIL_Z - 0.26);
   tower.add(sMail);
 
-  const DESK_X = -1.75, DESK_Z = 0.75;
+
+  const DESK_X = -0.85, DESK_Z = 1.05;
   const counter = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.44, 0.44), woodMat);
   counter.position.set(DESK_X, Y0 + 0.22, DESK_Z);
   const counterTop = new THREE.Mesh(
@@ -293,8 +311,9 @@ function boot() {
     return g;
   }
   tower.add(person(DESK_X, DESK_Z - 0.6, Y0, 0x8c3f2c));
-  tower.add(person(DOOR_X - 0.95, DOOR_Z - 0.5, Y0, 0x3b5a63));
-  tower.add(person(DOOR_X + 0.95, DOOR_Z - 0.35, Y0, 0x3b5a63));
+  /* two sorters behind the mailroom table — the staff doing the slicing */
+  tower.add(person(MAIL_X - 0.42, MAIL_Z - 0.4, Y0, 0x8c3f2c));
+  tower.add(person(MAIL_X + 0.42, MAIL_Z - 0.4, Y0, 0x8c3f2c));
 
   /* --- archive cargo, stacked along the back wall --- */
   const zipGeo = new THREE.BoxGeometry(0.1, 0.045, 0.1);
@@ -338,17 +357,18 @@ function boot() {
   function lerp(a, b, t) { return a + (b - a) * t; }
   function walkPath(u, lane) {
     const laneX = SHAFT_X[lane];
-    const queueX = 0.2 + lane * 0.55;
+    const qz = 1.30 + lane * 0.11;         // four parallel queue lines in front of the desk
     const pts = [
-      //  u    x                        y            z
-      [0.00, DOOR_X + 0.9, Y0, DOOR_Z + 2.4],
-      [0.09, DOOR_X, Y0, DOOR_Z + 0.9],
-      [0.16, DOOR_X - 0.5, Y0, DOOR_Z - 0.4],
-      [0.24, queueX, Y0, 1.9],
-      [0.33, DESK_X + 1.5, Y0, DESK_Z + 0.45],
-      [0.40, DESK_X + 1.05, Y0, DESK_Z + 0.4],
-      [0.50, laneX, Y0, SHAFT_Z + 0.75],
-      [0.56, laneX, Y0, SHAFT_Z + 0.1],
+      //  u    x                              y   z
+      [0.00, DOOR_X, Y0, DOOR_Z + 2.6],     // out on the street
+      [0.06, DOOR_X, Y0, DOOR_Z + 0.35],    // through the entrance
+      [0.12, DOOR_X - 0.6, Y0, 1.72],       // in, past the mailroom sorting table
+      [0.20, 1.15, Y0, qz],                 // join the queue
+      [0.33, -0.35, Y0, qz],                // shuffle forward toward reception
+      [0.40, DESK_X + 1.15, Y0, DESK_Z + 0.5], // at the counter: clipboard handed over
+      [0.47, DESK_X + 1.15, Y0, DESK_Z + 0.42],
+      [0.56, laneX, Y0, SHAFT_Z + 0.8],     // walk to a shaft
+      [0.62, laneX, Y0, SHAFT_Z + 0.1],     // step in
       [0.99, laneX, towerH - 0.5, SHAFT_Z + 0.1],
       [1.00, laneX, towerH - 0.5, SHAFT_Z + 0.1],
     ];
@@ -394,9 +414,9 @@ function boot() {
     marks.forEach((m, idx) => { if (centre0 >= m.mid - 200) actSide = idx; });
     const side = (actSide % 2 === 0 ? 1 : -1) * (innerWidth > 900 ? 1 : 0.35);
 
-    camPos.set(Math.sin(orbit) * r + low * 2.2 - side * 3.4, camY, Math.cos(orbit) * r);
+    camPos.set(Math.sin(orbit) * r + low * 3.0 - side * 3.4 * (1 - low), camY, Math.cos(orbit) * r);
     camera.position.lerp(camPos, 0.055);
-    target.set(side * 2.6, towerY + (wide * 6) + 0.2, 0);
+    target.set(side * 2.6 * (1 - low) + low * 0.6, towerY + (wide * 6) + 0.2, 0);
     camera.lookAt(target);
     }
 
@@ -422,7 +442,7 @@ function boot() {
       heads.setMatrixAt(i, dummy.matrix);
 
       // the dossier appears at the counter and is carried up
-      const holding = u > 0.37 && u < 0.97;
+      const holding = u > 0.44 && u < 0.97;
       dummy.position.set(pos.x + step, pos.y + bob + 0.11, pos.z + 0.075);
       dummy.rotation.set(0.25, 0, 0);
       dummy.scale.setScalar(holding ? 1 : 0.001);
