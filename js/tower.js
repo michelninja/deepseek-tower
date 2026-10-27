@@ -439,19 +439,48 @@ function boot() {
     });
     tower.add(railInst);
   }
+  /* A cabin is a frame, not a solid: floor, roof and three thin posts, with the
+     front left completely open. That open front is the whole point — through it you
+     can see who is riding, which is what the story is about. */
   const cabMat = new THREE.MeshStandardMaterial({
     color: 0xf4e9d2, roughness: .35, metalness: .25,
-    emissive: 0xffcf85, emissiveIntensity: .95,
+    emissive: 0xffcf85, emissiveIntensity: .45,
   });
-  const cabGeo = new THREE.BoxGeometry(0.6, 0.54, 0.6);
+  const cabGlass = new THREE.MeshStandardMaterial({
+    color: 0xdff0f4, roughness: .1, metalness: .05, transparent: true,
+    opacity: .18, emissive: 0x9ed3de, emissiveIntensity: .35,
+  });
   /* one cabin per shaft — nothing rides outside a shaft, nothing parked in a lobby */
   const cabLamp = new THREE.MeshStandardMaterial({
     color: 0xfff3d8, roughness: .3, metalness: .2,
     emissive: 0xffcf85, emissiveIntensity: 1.15,
   });
   const cabs = SHAFT_X.map((x, idx) => {
-    const cab = new THREE.Mesh(cabGeo, cabMat);
+    const cab = new THREE.Group();
     cab.position.set(x, Y0 + 0.02, SHAFT_Z);
+    const halfW = SHAFT_W - 0.03, halfD = SHAFT_HOLE - 0.04, h = FH * 0.78;
+    // floor and roof plates
+    const plate = new THREE.BoxGeometry(halfW * 2, 0.035, halfD * 2);
+    const floorPl = new THREE.Mesh(plate, cabMat); floorPl.position.y = 0;
+    const roofPl = new THREE.Mesh(plate, cabMat); roofPl.position.y = h;
+    cab.add(floorPl, roofPl);
+    // a lit panel in the roof, so the cabin glows and throws light on its riders
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(halfW * 1.5, 0.02, halfD * 1.5), cabLamp);
+    lamp.position.y = h - 0.02;
+    cab.add(lamp);
+    // three corner posts, the fourth left open at the front
+    for (const [px, pz] of [[-halfW, -halfD], [halfW, -halfD], [halfW, halfD], [-halfW, halfD]]) {
+      if (px < 0 && pz > 0) continue;             // the open front-left corner
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.028, h, 0.028), cabMat);
+      post.position.set(px, h / 2, pz);
+      cab.add(post);
+    }
+    // a glass side and back, so the ride is legible from outside without hiding it
+    const back = new THREE.Mesh(new THREE.BoxGeometry(halfW * 2, h * 0.92, 0.02), cabGlass);
+    back.position.set(0, h * 0.5, -halfD);
+    const leftSide = new THREE.Mesh(new THREE.BoxGeometry(0.02, h * 0.92, halfD * 2), cabGlass);
+    leftSide.position.set(-halfW, h * 0.5, 0);
+    cab.add(back, leftSide);
     tower.add(cab);
     // a lintel over each opening so you can read the shaft as a doorway, not a hole
     const lintel = new THREE.Mesh(new THREE.BoxGeometry(SHAFT_W * 2 + 0.16, 0.06, 0.05), cabLamp);
@@ -466,9 +495,9 @@ function boot() {
     shaftBack.position.set(x, Y0 + FH * 0.45, SHAFT_Z - SHAFT_HOLE + 0.02);
     tower.add(shaftBack);
     // and a number plate above each, 1 to 4, so the "four elevators" line is legible
-    const plate = sign(String(idx + 1), 0.2, 0.2, "#c8553d");
-    plate.position.set(x, Y0 + 0.68, SHAFT_Z + SHAFT_HOLE + 0.02);
-    tower.add(plate);
+    const numPlate = sign(String(idx + 1), 0.2, 0.2, "#c8553d");
+    numPlate.position.set(x, Y0 + 0.68, SHAFT_Z + SHAFT_HOLE + 0.02);
+    tower.add(numPlate);
     return cab;
   });
 
@@ -481,8 +510,8 @@ function boot() {
      Expand · Humanity · 's · Productivity · by · Collapsing · the · Distance ·
      Between · Idea · and · Impact · . · What · is · Ninja · Tech · ? */
   const COUNT = 18;
-  const bodyGeo = new THREE.CapsuleGeometry(0.034, 0.062, 3, 7);
-  const headGeo = new THREE.SphereGeometry(0.031, 8, 6);
+  const bodyGeo = new THREE.CapsuleGeometry(0.04, 0.078, 3, 7);
+  const headGeo = new THREE.SphereGeometry(0.036, 8, 6);
   const skinMat = new THREE.MeshStandardMaterial({ color: 0x1f4e5f, roughness: .45, metalness: .12 });
   const headMat = new THREE.MeshStandardMaterial({ color: 0xe8b98f, roughness: .7, metalness: .02 });
   const bodies = new THREE.InstancedMesh(bodyGeo, skinMat, COUNT);
@@ -757,12 +786,19 @@ function boot() {
       { at: 0.55, eye: [ 0.70, 0.52,  3.35], aim: [-0.45, 0.28,  1.25] }, // walking them up to the counter
       { at: 1.00, eye: [ 0.20, 0.50,  3.10], aim: [-0.55, 0.30,  1.20] }, // the clipboard changing hands
     ] },
-    elevators: { fl: 0, path: [
-      // stand back inside the lobby: four open shafts across the room, cabins in them
-      { at: 0.00, eye: [ 0.60, 0.46,  1.90], aim: [-0.20, 0.34, -0.92] },
-      // then lift with a cabin, so you see the storeys drop away behind the glass
-      { at: 0.55, eye: [ 0.60, 1.90,  1.86], aim: [-0.20, 1.70, -0.92] },
-      { at: 1.00, eye: [ 0.55, 3.30,  1.84], aim: [-0.20, 3.05, -0.92] },
+    /* the climb shot rides the car that is actually moving: trackShaft tells the
+       camera to follow the highest cabin instead of a fixed height */
+    /* the climb shot rides the car in lane 2 that is actually moving: trackShaft
+       pins the camera to that cabin's height, so the storeys fly past. */
+    /* the climb shot rides whichever car is highest, so through the open fronts you
+       watch the same people the card is talking about go up */
+    /* the climb shot rides one named car down the whole act. Deterministic: no
+       flicker between lanes, and through the open front you always see whoever
+       is in that car. */
+    elevators: { fl: 0, trackLane: 1, path: [
+      { at: 0.00, eye: [ 2.95, 0.40,  1.85], aim: [ 0.60, 0.30, -0.92] }, // the four shafts, whole
+      { at: 0.34, eye: [ 2.40, 0.32,  1.10], aim: [ 0.62, 0.27, -0.92] }, // step in toward the open fronts
+      { at: 1.00, eye: [ 2.10, 0.26,  0.80], aim: [ 0.62, 0.25, -0.92] }, // hold on the car as it climbs
     ] },
     conference: { fl: 8, path: [
       { at: 0.00, eye: [ 0.55, 0.46,  3.45], aim: [ 0.00, 0.26, -0.55] },
@@ -840,8 +876,13 @@ function boot() {
   /* a lane's clock. Up while the crew is aboard, back down once they have stepped
      out. The body's height is read from this, never interpolated on its own, so a
      rider can never drift out of the cabin carrying them. */
+  /* act III pins car 2: while the card is on screen its crew is aboard and the car
+     climbs with the reader's progress through the act, so the people you are reading
+     about are the people in the frame */
+  let forced = null;                     // { lane, clock }
   function laneClock(lane) {
-    const c = travel + lane * 0.07;
+    if (forced && forced.lane === lane) return forced.clock;
+    const c = travel + lane * 0.25;
     return ((c % 1) + 1) % 1;
   }
   function cabinYFor(lane) {
@@ -858,7 +899,7 @@ function boot() {
   function yFor(u, lane) {
     const c = laneClock(lane);
     if (c < RIDE_IN) return Y0;              // on a floor
-    if (c <= RIDE_OUT) return cabinYFor(lane); // in the cabin, exactly
+    if (c <= RIDE_OUT) return cabinYFor(lane) + 0.035; // standing on the cabin floor
     return ROOF_DECK;                        // out on the roof deck
   }
 
@@ -889,6 +930,7 @@ function boot() {
     return v;
   }
 
+  let trackLane = null;                  // which cabin the climb shot is riding
   const veil = document.getElementById("veil");
   const inspectMatch = /[?&]floor=(\d+)/.exec(location.search);
   const INSPECT = inspectMatch ? Number(inspectMatch[1]) : null;
@@ -911,6 +953,11 @@ function boot() {
     const af = st.floor;
     const act = acts[st.i];
     const view = VIEWS[act && act.focus];
+    /* in the climb act, car 2's crew rides for the whole card, from the lobby to
+       the roof, exactly as fast as you scroll through it */
+    if (act && act.focus === "elevators") {
+      forced = { lane: 1, clock: RIDE_IN + 0.02 + st.frac * (RIDE_OUT - RIDE_IN - 0.04) };
+    } else forced = null;
 
     // low over the lobby when the story is on floor 0, then climb alongside
     const towerY = af * towerH;
@@ -954,7 +1001,16 @@ function boot() {
     if (view) {
       // this act is about one specific thing: get close enough to actually see it
       const shot = shotAt(view, st.frac);
-      const vy = view.fl !== undefined ? view.fl * FH : towerY;
+      let vy = view.fl !== undefined ? view.fl * FH : towerY;
+      if (view.trackLane !== undefined) {
+        /* the camera rides car 2. It goes up as you scroll down and back down as you
+           scroll up, so the climb is literally your scroll — and the people in that
+           car are in frame the whole way, seen through the open front. */
+        const carX = SHAFT_X[view.trackLane];
+        vy = Math.min(cabinYFor(view.trackLane) - 0.06, ROOF_DECK - 1.2);
+        shot.aim[0] += carX - 0.62;
+        shot.eye[0] += carX - 0.62;
+      }
       camPos.set(
         camPos.x + (shot.eye[0] - camPos.x) * blend,
         camPos.y + (vy + shot.eye[1] - camPos.y) * blend,
