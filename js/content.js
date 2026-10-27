@@ -17,7 +17,7 @@ export const acts = [
     floor: 0,
     story: [
       "The building has one job: read what you typed, and write back an answer — one word at a time.",
-      "Your question walks in the door and the mailroom gets to work. It slices what you wrote into the smallest pieces of words it knows, taken from an official dictionary of 129,280 entries.",
+      "Your question comes in through the **entrance**, and just past it stands the **mailroom sorting table**. The mailroom gets to work: it slices what you wrote into the smallest pieces of words it knows, taken from an official dictionary of 129,280 entries.",
       "Each slice becomes a person. Every token is an Investigator, and they **walk through the door and queue in the lobby** together — one body per slice, standing in four loose lines, waiting their turn.",
       "A long question means a crowded lobby. A million-word document sends a million Investigators through the door at once — which is precisely why the rest of this building is designed the way it is.",
     ],
@@ -33,12 +33,12 @@ export const acts = [
     plaque: "Reception desk",
     floor: 0,
     story: [
-      "At reception each Investigator is **handed a clipboard holding 5,120 numbers**. That is their dossier — everything the building will ever know about them.",
+      "From the sorting table, each Investigator **walks across the lobby in a line and queues at reception**, where they are **handed a clipboard holding 5,120 numbers**. That is their dossier — everything the building will ever know about them.",
       "On the ground floor the dossier is deliberately vague. The Investigator for “apple” does not yet know whether it is a fruit or a company. That ignorance is the point: meaning is not handed out at the door, it is earned on the way up.",
       "If you attached a picture, a separate annex handles it. The Foreign Media Desk cuts the image into patches and translates each one into the same 5,120-number dossier, so picture Investigators and text Investigators can ride the tower together.",
     ],
     example:
-      "Fourteen clipboards are **handed across the reception counter**. The **Ninja** from your question and the **ninja** from the link collect **identical** dossiers — nobody has told either of them which one they are. And **Tech** and **tech** are two more people holding the same numbers. Reception is where you can already see the waste: four of the fourteen are duplicates.",
+      "The fourteen **leave the sorting table, join four lines, and walk to the counter**. Fourteen clipboards are **handed across it**. The **Ninja** from your question and the **ninja** from the link collect **identical** dossiers — nobody has told either of them which one they are. And **Tech** and **tech** are two more people holding the same numbers. Reception is where you can already see the waste: four of the fourteen are duplicates.",
     whoElse:
       "Most towers call this the embedding table and leave it at that. The DeepSeek-V4.1-Flash tower (DeepSeek, 2026) also runs a dedicated vision annex so pictures join the queue as equals.",
   },
