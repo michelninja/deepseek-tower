@@ -5,7 +5,10 @@ const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- narrative into the DOM (readable without WebGL) ---------- */
 /* **x** marks something you can watch happen on the 3D screen */
-const bold = (t) => t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+const link = (t) =>
+  t.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener">$1</a>');
+const bold = (t) => link(t).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 const main = document.getElementById("acts");
 acts.forEach((a, i) => {
   const sec = document.createElement("section");
@@ -539,6 +542,9 @@ function boot() {
     seed: Math.random() * 100,
   }));
 
+  /* the clinic's visitors, driven by the reader's progress through Act V */
+  let CLINIC_VISITORS = [];
+
   /* one small name tag above every Investigator, so you can read who is who */
   const tags = TOKENS.map((tok) => {
     const t = sign(tok, Math.max(0.34, tok.length * 0.075), 0.135, "#1f4e5f");
@@ -618,39 +624,92 @@ function boot() {
       tower.add(mic);
     }
 
-    // floor 14: the clinic — a GP's desk and rows of specialist booths
+    /* floor 14: the clinic.
+       Laid out so the whole visit is legible from the lobby end: the GP's desk
+       sits front and centre with the GP behind it, the nurse stands at the door
+       to the left, and six specialist booths line the back wall, numbered, each
+       with a specialist behind its counter. */
     const cd = 14 * FH + FH * 0.07;
-    const gpDesk = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.14, 0.4), woodMat);
-    gpDesk.position.set(W * 0.16, cd + 0.20, D * 0.10);
+    const gpX = 0.0, gpZ = 1.05;
+    const gpDesk = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.13, 0.38), woodMat);
+    gpDesk.position.set(gpX, cd + 0.19, gpZ);
     tower.add(gpDesk);
     const gpTop = new THREE.MeshStandardMaterial({ color: 0x6b4a30, roughness: .7 });
     const gpLeg = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: .9 });
-    for (const [lx, lz] of [[-0.3,-0.15],[-0.3,0.15],[0.3,-0.15],[0.3,0.15]]) {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.13, 0.04), gpLeg);
-      leg.position.set(W * 0.16 + lx, cd + 0.065, D * 0.10 + lz);
+    for (const [lx, lz] of [[-0.34,-0.16],[-0.34,0.16],[0.34,-0.16],[0.34,0.16]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.04), gpLeg);
+      leg.position.set(gpX + lx, cd + 0.09, gpZ + lz);
       tower.add(leg);
     }
-    const gpBlotter = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.012, 0.14), gpTop);
-    gpBlotter.position.set(W * 0.16, cd + 0.277, D * 0.10);
+    const gpBlotter = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.012, 0.15), gpTop);
+    gpBlotter.position.set(gpX, cd + 0.256, gpZ);
     tower.add(gpBlotter);
-    const sGP = sign("GP", 0.55, 0.3, "#c8553d");
-    sGP.position.set(W * 0.16, cd + 0.46, D * 0.10);
+    /* the GP stands at the END of the desk, in profile, with nothing in front of
+       them — put them behind it and a storey-height desk hides them entirely */
+    const gpPerson = person(gpX - 0.52, gpZ + 0.04, cd, 0x8c3f2c);
+    gpPerson.scale.setScalar(1.5);
+    tower.add(gpPerson);
+    const sGP = sign("GENERAL PRACTITIONER", 1.5, 0.24, "#c8553d");
+    sGP.position.set(gpX, cd + 0.56, gpZ + 0.16);
     tower.add(sGP);
-    /* each booth is a partition with a little lit counter — a place you queue at */
+    const sEvery = sign("everyone", 0.5, 0.15, "#1f4e5f");
+    sEvery.position.set(gpX, cd + 0.42, gpZ + 0.16);
+    tower.add(sEvery);
+
+    /* six specialist booths along the back wall, each numbered, each staffed */
     const boothMat = new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: .8 });
     const boothTopMat = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: .6 });
-    for (let k = 0; k < 7; k++) {
-      const bx = -W * 0.26 + k * 0.34;
-      const divider = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.30, 0.34), boothMat);
-      divider.position.set(bx - 0.15, cd + 0.15, -D * 0.12);
-      const bench = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.1, 0.16), boothTopMat);
-      bench.position.set(bx - 0.03, cd + 0.05, -D * 0.04);
-      tower.add(divider, bench);
+    const boothLit = new THREE.MeshStandardMaterial({
+      color: 0xfff3d8, roughness: .4, emissive: 0xffb347, emissiveIntensity: .5 });
+    const BOOTH_X = [];
+    for (let k = 0; k < 6; k++) {
+      const bx = -1.28 + k * 0.512;
+      BOOTH_X.push(bx);
+      // a back panel that catches the light, so each booth reads as a separate window
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.34, 0.03), boothLit);
+      back.position.set(bx, cd + 0.19, -D * 0.42);
+      // the counter you stand at
+      const counter = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.11, 0.18), boothTopMat);
+      counter.position.set(bx, cd + 0.055, -D * 0.30);
+      // dividers between booths
+      const divL = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.30, 0.30), boothMat);
+      divL.position.set(bx - 0.235, cd + 0.15, -D * 0.34);
+      tower.add(back, counter, divL);
+      // the specialist, behind their counter
+      tower.add(person(bx, -D * 0.38, cd, 0x2f6b7a));
+      // and the number, so the six are countable
+      const num = sign(String(k + 1), 0.16, 0.16, "#c8553d");
+      num.position.set(bx, cd + 0.40, -D * 0.30);
+      tower.add(num);
     }
-    const sSpec = sign("SPECIALISTS", 0.95, 0.34, "#1f4e5f");
-    sSpec.position.set(W * 0.10, cd + 0.44, -D * 0.30);
+    const sSpec = sign("SIX SPECIALISTS", 1.05, 0.24, "#1f4e5f");
+    sSpec.position.set(0.0, cd + 0.46, -D * 0.30);
     tower.add(sSpec);
-    tower.add(person(W * 0.16 - 0.62, D * 0.24, cd, 0x8c3f2c));
+    /* the triage nurse, at the door, holding the clipboard the visit is decided on */
+    const nurse = person(-W * 0.34, D * 0.26, cd, 0x6a5a8c);
+    nurse.scale.setScalar(1.15);
+    tower.add(nurse);
+    const sNurse = sign("TRIAGE", 0.62, 0.19, "#c8553d");
+    sNurse.position.set(-W * 0.34, cd + 0.42, D * 0.26);
+    tower.add(sNurse);
+    /* this floor's visitors, animated below: the door, the GP, then their booth */
+    /* the queue is a real queue: everyone lines up on the same strip of floor,
+       waits, is seen by the GP one at a time, then walks to their own booth */
+    const QUEUE_Z = D * 0.30;
+    const CLINIC_PATH = [
+      [-W * 0.34, D * 0.82],    // in at the door, past triage
+      [-W * 0.18, QUEUE_Z + 0.62], // join the back of the queue
+      [0.66, QUEUE_Z],           // shuffle forward, one place at a time
+      [gpX + 0.55, QUEUE_Z],     // at the GP's desk
+      [gpX + 0.55, gpZ + 0.42],  // seen
+      [0.20, QUEUE_Z - 0.10],    // out of the line
+    ];
+    CLINIC_VISITORS = BOOTH_X.map((bx, k) => {
+      const g = person(0, 0, cd, k % 2 ? 0x2f6b7a : 0x8c3f2c);
+      g.scale.setScalar(1.35);
+      tower.add(g);
+      return { g, path: [...CLINIC_PATH, [bx, -D * 0.24]] };
+    });
 
     // floor 21: the reading room — the local desk, then the library stacks
     const rd = 21 * FH + FH * 0.07;
@@ -1089,6 +1148,28 @@ function boot() {
       tags[i].position.set(pos.x + (ridingNow ? (d.berth - 2) * 0.092 : 0),
                            pos.y + 0.335, pos.z);
       tags[i].quaternion.copy(camera.quaternion);
+    }
+
+    /* the clinic: while its card is on screen, the day actually runs. Each visitor
+       walks the same route — door, triage, GP desk, then their own numbered booth —
+       timed off the reader's progress through Act V, so you watch it happen. */
+    if (CLINIC_VISITORS) {
+      const live = !!act && act.focus === "clinic";
+      CLINIC_VISITORS.forEach((v, k) => {
+        const pts = v.path;
+        /* each visitor is a little ahead of the one before, and the whole clinic is
+           driven by how far down the card you are */
+        const local = Math.min(1, Math.max(0, st.frac * 1.5 - k * 0.06));
+        const seg = local * (pts.length - 1);
+        const i0 = Math.min(pts.length - 2, Math.floor(seg));
+        const f = seg - i0;
+        const a = pts[i0], b = pts[i0 + 1];
+        const x = a[0] + (b[0] - a[0]) * f;
+        const z = a[1] + (b[1] - a[1]) * f;
+        v.g.position.set(x, 14 * FH + FH * 0.07, z);
+        v.g.rotation.y = Math.atan2(b[0] - a[0], b[1] - a[1]);
+        v.g.visible = live;
+      });
     }
 
     // cabins ride their shafts on their lane's clock
