@@ -15,6 +15,7 @@ acts.forEach((a, i) => {
       <p class="eyebrow">${a.eyebrow}</p>
       <h2>${a.title}<span class="plaque">${a.plaque}</span></h2>
       ${a.story.map((p) => `<p>${p}</p>`).join("")}
+      <p class="ninja"><b>Your case file</b>${a.ninja}</p>
       <p class="who-else"><b>Who else</b>${a.whoElse}</p>
     </div>`;
   main.appendChild(sec);
@@ -112,6 +113,18 @@ function boot() {
   }
 
   let marks = layoutCards();
+
+  /* map scroll position to a fractional floor, interpolating between acts */
+  function actProgress(p) {
+    const centre = scrollY + innerHeight / 2;
+    let i = 0;
+    for (let k = 0; k < marks.length; k++) if (centre >= marks[k].mid - innerHeight * 0.5) i = k;
+    const a = acts[i], b = acts[Math.min(i + 1, acts.length - 1)];
+    if (a === b) return a.floor / 40;
+    const span = marks[Math.min(i + 1, marks.length - 1)].mid - marks[i].mid;
+    const f = span > 0 ? Math.min(1, Math.max(0, (centre - marks[i].mid) / span)) : 0;
+    return (a.floor + (b.floor - a.floor) * f) / 40;
+  }
   addEventListener("resize", () => {
     marks = layoutCards();
     camera.aspect = innerWidth / innerHeight;
@@ -127,9 +140,11 @@ function boot() {
     const maxScroll = Math.max(1, document.body.scrollHeight - innerHeight);
     const p = Math.min(1, Math.max(0, scrollY / maxScroll));
 
-    // camera climbs the tower with the page
+    // camera climbs the tower with the page, but pins to the act's floor
     const towerH = FLOORS * FH;
-    const wantY = 1.5 + p * (towerH - 2);
+    const scrollY2 = 1.5 + p * (towerH - 2);
+    const actFloor = FLOORS * (actProgress(p));
+    const wantY = scrollY2 * 0.45 + actFloor * FH * 0.55;
     const orbit = reduceMotion ? 0 : Math.sin(t * 0.16) * 0.35;
     const r = 21 - p * 5;
 
@@ -175,6 +190,12 @@ function boot() {
     document.querySelectorAll(".act").forEach((el, idx) => {
       el.classList.toggle("is-active", idx === active);
     });
+
+    const meter = document.getElementById("floor-o-meter");
+    if (meter) {
+      meter.classList.toggle("is-on", scrollY > innerHeight * 0.6);
+      meter.firstElementChild.textContent = String(Math.round(actProgress(p) * 40));
+    }
 
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
