@@ -11,6 +11,7 @@
 export const acts = [
   {
     id: "arrival",
+    focus: "lobby",
     eyebrow: "Act I · The lobby",
     title: "Your question arrives",
     plaque: "Mailroom",
@@ -28,6 +29,7 @@ export const acts = [
   },
   {
     id: "dossier",
+    focus: "reception",
     eyebrow: "Act II · Reception",
     title: "The 5,120-number dossier",
     plaque: "Reception desk",
@@ -44,6 +46,7 @@ export const acts = [
   },
   {
     id: "elevator",
+    focus: "elevators",
     eyebrow: "Act III · The climb",
     title: "Four elevators, not one",
     plaque: "The express shafts",
@@ -95,6 +98,8 @@ export const acts = [
   },
   {
     id: "engram",
+    focus: "lockers",
+    floors: [2, 15],
     eyebrow: "Act VI · Memory",
     title: "The walls of lockers",
     plaque: "Floors 2 and 15",
@@ -112,6 +117,8 @@ export const acts = [
   },
   {
     id: "archive",
+    focus: "archive",
+    floors: [18],
     eyebrow: "Act VII · The Archive",
     title: "Throw the questions away",
     plaque: "The Archive",
@@ -129,6 +136,8 @@ export const acts = [
   },
   {
     id: "blockade",
+    focus: "seam",
+    floors: [20],
     eyebrow: "Act VIII · The blockade",
     title: "The staircase ends at floor 20",
     plaque: "Floor 20",
@@ -163,6 +172,8 @@ export const acts = [
   },
   {
     id: "roof",
+    focus: "roof",
+    floors: [40],
     eyebrow: "Act X · The roof",
     title: "The press conference",
     plaque: "Floor 40",
