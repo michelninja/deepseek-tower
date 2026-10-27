@@ -12,11 +12,20 @@ body{
   text-rendering:optimizeLegibility;
 }
 #scene{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+/* the masthead veil: fixed, so the wash over the tower lasts as long as the title
+   is on screen — scrolling up or down, it never runs out halfway down the page */
+#veil{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(115% 90% at 68% 10%,rgba(244,241,234,.97),rgba(244,241,234,.72) 48%,rgba(244,241,234,.18) 78%),
+    linear-gradient(180deg,rgba(244,241,234,.55),rgba(244,241,234,0) 42%);
+  opacity:1;transition:opacity .45s ease;
+}
 
 .masthead{
   position:relative;z-index:2;min-height:100svh;display:flex;flex-direction:column;
   justify-content:center;padding:8vh clamp(1.25rem,6vw,7rem);
-  background:radial-gradient(110% 85% at 68% 12%,rgba(244,241,234,.96),rgba(244,241,234,.7) 52%,rgba(244,241,234,.15));
+  background:transparent;
 }
 .kicker{font-family:var(--sans);font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin:0 0 1.2rem}
 .masthead h1{
@@ -31,6 +40,9 @@ body{
   background:rgba(255,255,255,.35);margin-left:.4em;white-space:nowrap;
 }
 .glossary-note{white-space:normal;max-width:34ch;margin-left:0}
+.sources{display:flex;flex-wrap:wrap;gap:.4rem 1.6rem;margin:1.5rem 0 0;font-family:var(--sans);font-size:.82rem}
+.sources a{color:var(--accent-2);text-decoration:none;border-bottom:1px solid rgba(31,78,95,.32);padding-bottom:.1em}
+.sources a:hover{border-bottom-color:var(--accent)}
 .scroll-hint{position:absolute;bottom:3vh;left:clamp(1.25rem,6vw,7rem);font-family:var(--sans);font-size:.74rem;letter-spacing:.24em;text-transform:uppercase;color:#2b303c;margin:0}
 .scroll-hint::after{content:"";display:block;width:1px;height:52px;background:rgba(18,20,26,.3);margin-top:.7rem}
 
