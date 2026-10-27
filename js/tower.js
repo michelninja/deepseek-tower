@@ -522,6 +522,12 @@ function boot() {
   const dossierGeo = new THREE.BoxGeometry(0.15, 0.016, 0.105);
   const dossierMat = new THREE.MeshStandardMaterial({ color: 0xc8553d, roughness: .5, metalness: .15 });
   const dossiers = new THREE.InstancedMesh(dossierGeo, dossierMat, COUNT);
+  /* instance matrices move these all over the tower, but InstancedMesh computes its
+     bounding sphere once, at the origin — so without this the whole crowd is culled
+     as soon as the cars climb and the riders vanish from the frame */
+  bodies.frustumCulled = false;
+  heads.frustumCulled = false;
+  dossiers.frustumCulled = false;
   tower.add(bodies, heads, dossiers);
 
   /* the eighteen tokens, in the order the prompt splits into them */
@@ -836,9 +842,18 @@ function boot() {
     // A storey is only FH (0.62) tall, so eyes sit ~0.40 up and aims ~0.28 up:
     // higher than that and you are looking at the ceiling slab, not the room.
     lobby: { fl: 0, path: [
-      { at: 0.00, eye: [ 5.10, 1.00,  8.90], aim: [ 1.90, 0.62,  3.20] }, // out on the street, facing the entrance
-      { at: 0.42, eye: [ 2.55, 0.60,  2.85], aim: [ 1.80, 0.32,  1.62] }, // stepping through the door
-      { at: 1.00, eye: [ 2.85, 0.56,  3.05], aim: [ 1.76, 0.30,  1.62] }, // the sorting table, and the queue beside it
+      /* a storey is only FH (0.62) tall, so the eye must stay under the ceiling:
+         any higher and the camera shoots through the slab above and sees beams
+         instead of the room. From just inside the door the whole lobby is open. */
+      { at: 0.00, eye: [ 5.30, 1.05,  9.20], aim: [ 1.90, 0.46,  3.20] }, // out on the street, facing the entrance
+      /* step in past the door posts (they sit at x 1.28 and 2.52, z 3.2) and take
+         the far corner: from there the table, the queue and all four shafts are
+         in one frame, with nothing in the near field to hide them */
+      /* the building is a dollhouse: open at the front. So the reliable vantage is
+         OUTSIDE the front, low, looking in — the eye stays under the first ceiling
+         and nothing in the near field is between you and the room. */
+      { at: 0.35, eye: [ 4.10, 0.44,  6.60], aim: [ 0.60, 0.24,  1.10] },
+      { at: 1.00, eye: [ 4.05, 0.42,  6.20], aim: [ 0.35, 0.22,  0.70] },
     ] },
     reception: { fl: 0, path: [
       { at: 0.00, eye: [ 2.90, 0.60,  4.35], aim: [ 0.55, 0.30,  1.35] }, // the queue, waiting its turn
@@ -855,9 +870,13 @@ function boot() {
        flicker between lanes, and through the open front you always see whoever
        is in that car. */
     elevators: { fl: 0, trackLane: 1, path: [
-      { at: 0.00, eye: [ 2.95, 0.40,  1.85], aim: [ 0.60, 0.30, -0.92] }, // the four shafts, whole
-      { at: 0.34, eye: [ 2.40, 0.32,  1.10], aim: [ 0.62, 0.27, -0.92] }, // step in toward the open fronts
-      { at: 1.00, eye: [ 2.10, 0.26,  0.80], aim: [ 0.62, 0.25, -0.92] }, // hold on the car as it climbs
+      /* The camera rides OUTSIDE the open front. It has to: while the cars climb,
+         an eye inside the tower passes straight through the floor slabs and spends
+         the shot buried in concrete. Out here the four cars are always in clean
+         air, level with each other, with people visible through the open fronts. */
+      { at: 0.00, eye: [ 0.60, 0.40,  3.55], aim: [ 0.60, 0.28, -0.92] }, // the whole shaft bank
+      { at: 0.34, eye: [ 0.60, 0.34,  3.20], aim: [ 0.60, 0.25, -0.92] },
+      { at: 1.00, eye: [ 0.60, 0.30,  2.95], aim: [ 0.60, 0.23, -0.92] }, // hold: four cars, side by side
     ] },
     conference: { fl: 8, path: [
       { at: 0.00, eye: [ 0.55, 0.46,  3.45], aim: [ 0.00, 0.26, -0.55] },
@@ -921,7 +940,9 @@ function boot() {
      and slides back down once it is empty. Riders are pinned to the cabin's y, so
      nobody is ever flying: they ride. */
   const ROOF_DECK = 39 * FH + FH * 0.07;
-  const RIDE_IN = 0.55, RIDE_OUT = 0.85;
+  /* the cars spend most of the cycle in motion: four shafts climbing together is
+     what the room is about, so a parked shaft is the exception, not the rule */
+  const RIDE_IN = 0.12, RIDE_OUT = 0.74;
   /* --- the building is driven by the reader, not by a clock ---
      The Investigators walk at the speed you scroll. Stop, and the lobby stops.
      Scroll back, and they walk back. A full climb of the tower takes about four
@@ -938,14 +959,17 @@ function boot() {
   /* act III pins car 2: while the card is on screen its crew is aboard and the car
      climbs with the reader's progress through the act, so the people you are reading
      about are the people in the frame */
-  let forced = null;                     // { lane, clock }
-  function laneClock(lane) {
-    if (forced && forced.lane === lane) return forced.clock;
-    const c = travel + lane * 0.25;
+  let forced = null;                     // a clock forced by the climb act
+  /* All four shafts run on the SAME clock. That is the point of the room: four
+     cars rise together, side by side, every time. Offsetting them per lane meant
+     you only ever saw one car moving, which read as one elevator, not four. */
+  function laneClock() {
+    if (forced !== null) return forced;
+    const c = travel;
     return ((c % 1) + 1) % 1;
   }
   function cabinYFor(lane) {
-    const c = laneClock(lane);
+    const c = laneClock();
     let f;
     if (c < RIDE_IN) f = 0;
     else if (c <= RIDE_OUT) f = (c - RIDE_IN) / (RIDE_OUT - RIDE_IN);
@@ -956,7 +980,7 @@ function boot() {
   /* height is read off the lane clock, not off the walker's own progress, so a
      rider is welded to the cabin floor no matter how they are staggered */
   function yFor(u, lane) {
-    const c = laneClock(lane);
+    const c = laneClock();
     if (c < RIDE_IN) return Y0;              // on a floor
     if (c <= RIDE_OUT) return cabinYFor(lane) + 0.035; // standing on the cabin floor
     return ROOF_DECK;                        // out on the roof deck
@@ -974,7 +998,7 @@ function boot() {
       [0.33, -0.35, Y0, qz],                // shuffle forward toward reception
       [0.40, DESK_X + 1.15, Y0, DESK_Z + 0.5], // at the counter: clipboard handed over
       [0.47, DESK_X + 1.15, Y0, DESK_Z + 0.42],
-      [0.52, laneX, Y0, SHAFT_Z + 0.86],    // walk to their shaft
+      [0.10, laneX, Y0, SHAFT_Z + 0.86],    // walk to their shaft
       [RIDE_IN, laneX, Y0, SHAFT_Z + 0.06], // step through the opening
       [RIDE_OUT, laneX, Y0, SHAFT_Z],       // riding: height comes from yFor
       [0.90, laneX, Y0, SHAFT_Z + 0.62],    // step out onto the roof
@@ -1015,7 +1039,7 @@ function boot() {
     /* in the climb act, car 2's crew rides for the whole card, from the lobby to
        the roof, exactly as fast as you scroll through it */
     if (act && act.focus === "elevators") {
-      forced = { lane: 1, clock: RIDE_IN + 0.02 + st.frac * (RIDE_OUT - RIDE_IN - 0.04) };
+      forced = RIDE_IN + 0.02 + st.frac * (RIDE_OUT - RIDE_IN - 0.04);
     } else forced = null;
 
     // low over the lobby when the story is on floor 0, then climb alongside
@@ -1065,10 +1089,7 @@ function boot() {
         /* the camera rides car 2. It goes up as you scroll down and back down as you
            scroll up, so the climb is literally your scroll — and the people in that
            car are in frame the whole way, seen through the open front. */
-        const carX = SHAFT_X[view.trackLane];
-        vy = Math.min(cabinYFor(view.trackLane) - 0.06, ROOF_DECK - 1.2);
-        shot.aim[0] += carX - 0.62;
-        shot.eye[0] += carX - 0.62;
+        vy = Math.min(cabinYFor(0) + 0.10, ROOF_DECK - 1.2);
       }
       camPos.set(
         camPos.x + (shot.eye[0] - camPos.x) * blend,
@@ -1084,7 +1105,11 @@ function boot() {
     /* ease in, but never lag: the further the camera has to travel, the faster it
        closes the gap, so a jump between floors settles instead of trailing behind */
     const travel = camera.position.distanceTo(camPos);
-    const ease = view ? Math.min(1, (0.10 + travel * 0.16) * (0.35 + blend * 0.65)) : 0.06;
+    /* a shot that rides a moving car must not lag behind it, or the camera slides
+       under the cabin floor and you see the underside of the elevator */
+    const ease = view && view.trackLane !== undefined
+      ? 0.55
+      : (view ? Math.min(1, (0.10 + travel * 0.16) * (0.35 + blend * 0.65)) : 0.06);
     camera.position.lerp(camPos, ease);
     camera.lookAt(target);
     window.__cam = { eye: camPos.toArray().map(n => +n.toFixed(2)),
@@ -1096,25 +1121,25 @@ function boot() {
     // investigators run their walk on a loop, staggered
     for (let i = 0; i < COUNT; i++) {
       const d = invData[i];
-      let u = (laneClock(d.lane) + d.row * 0.006) % 1;
+      let u = (laneClock() + d.row * 0.006) % 1;
       const pos = walkPath(u, d.lane);
       const walking = u < RIDE_IN;
       const swing = reduceMotion ? 0 : Math.sin(t * 9 * Math.sign(glide || 1) + d.seed);
       const step = walking * swing * 0.012 * pace;
       const bob = walking ? Math.abs(Math.sin(t * 9 + d.seed)) * 0.012 * pace : 0;
 
-      const lc = laneClock(d.lane);
+      const lc = laneClock();
       const riding = lc >= RIDE_IN && lc <= RIDE_OUT;
       const bx = pos.x + (riding ? (d.berth - 2) * 0.092 : 0);
       dummy.position.set(bx, pos.y + bob, pos.z + (riding ? -0.02 : 0));
       dummy.rotation.set(0, 0, 0);
-      dummy.scale.setScalar(riding ? 0.94 : 1);
+      dummy.scale.setScalar(riding ? 1.35 : 1);
       dummy.translateY(0.075);
       dummy.updateMatrix();
       bodies.setMatrixAt(i, dummy.matrix);
 
       dummy.position.set(bx, pos.y + bob + 0.183, pos.z + (riding ? -0.02 : 0));
-      dummy.scale.setScalar(1.01);
+      dummy.scale.setScalar(riding ? 1.35 : 1.01);
       dummy.updateMatrix();
       heads.setMatrixAt(i, dummy.matrix);
 
@@ -1127,9 +1152,9 @@ function boot() {
       dossiers.setMatrixAt(i, dummy.matrix);
     }
     window.__inv = invData.map((d, i) => {
-      const u = (laneClock(d.lane) + d.row * 0.006) % 1;
+      const u = (laneClock() + d.row * 0.006) % 1;
       const pos = walkPath(u, d.lane);
-      const lc2 = laneClock(d.lane);
+      const lc2 = laneClock();
       return { u: +u.toFixed(2), lane: d.lane, y: +pos.y.toFixed(2),
                cab: +cabinYFor(d.lane).toFixed(2),
                riding: lc2 >= RIDE_IN && lc2 <= RIDE_OUT };
@@ -1141,9 +1166,9 @@ function boot() {
     // name tags follow their Investigator and always face the camera
     for (let i = 0; i < COUNT; i++) {
       const d = invData[i];
-      const u = (laneClock(d.lane) + d.row * 0.006) % 1;
+      const u = (laneClock() + d.row * 0.006) % 1;
       const pos = walkPath(u, d.lane);
-      const lc = laneClock(d.lane);
+      const lc = laneClock();
       const ridingNow = lc >= RIDE_IN && lc <= RIDE_OUT;
       tags[i].position.set(pos.x + (ridingNow ? (d.berth - 2) * 0.092 : 0),
                            pos.y + 0.335, pos.z);
