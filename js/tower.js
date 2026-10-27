@@ -59,22 +59,25 @@ function sign(text, w, h, ink = "#3d4353") {
 
 function boot() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
   renderer.setSize(innerWidth, innerHeight, false);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xf4f1ea, 36, 115);
+  scene.fog = new THREE.Fog(0xf4f1ea, 34, 130);
 
   const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 400);
   camera.position.set(12, 3, 24);
 
-  scene.add(new THREE.HemisphereLight(0xfff6e8, 0x3d4353, 1.15));
-  const sun = new THREE.DirectionalLight(0xffe9cc, 1.3);
+  scene.add(new THREE.HemisphereLight(0xfff6e8, 0x2c3240, 0.9));
+  const sun = new THREE.DirectionalLight(0xffe9cc, 1.55);
   sun.position.set(-16, 34, 20);
   scene.add(sun);
-  const rim = new THREE.DirectionalLight(0x9fc6d8, 0.55);
+  const rim = new THREE.DirectionalLight(0x9fc6d8, 0.6);
   rim.position.set(20, 14, -22);
   scene.add(rim);
-  const front = new THREE.DirectionalLight(0xffffff, 0.5);
+  const front = new THREE.DirectionalLight(0xffffff, 0.85);
   front.position.set(6, 8, 30);
   scene.add(front);
 
@@ -84,11 +87,11 @@ function boot() {
   const tower = new THREE.Group();
   scene.add(tower);
 
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0xe8e2d4, roughness: .84, metalness: .04 });
-  const encMat   = new THREE.MeshStandardMaterial({ color: 0xd3c19c, roughness: .88, metalness: .03 });
-  const decMat   = new THREE.MeshStandardMaterial({ color: 0xdae3e4, roughness: .84, metalness: .05 });
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0xcfc4ac, roughness: .84, metalness: .04 });
+  const encMat   = new THREE.MeshStandardMaterial({ color: 0xa88b5c, roughness: .88, metalness: .03 });
+  const decMat   = new THREE.MeshStandardMaterial({ color: 0xa8c0c6, roughness: .84, metalness: .05 });
   const seamMat  = new THREE.MeshStandardMaterial({ color: 0xc8553d, roughness: .5, metalness: .2, emissive: 0x3a1008, emissiveIntensity: .5 });
-  const backMat  = new THREE.MeshStandardMaterial({ color: 0xcfc6b2, roughness: .95, metalness: .02 });
+  const backMat  = new THREE.MeshStandardMaterial({ color: 0xa89a80, roughness: .95, metalness: .02 });
   const woodMat  = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: .7, metalness: .05 });
 
   const slabGeo = new THREE.BoxGeometry(W, FH * 0.14, D);
@@ -110,8 +113,55 @@ function boot() {
     right.position.set(W * 0.5 - 0.05, y + FH * 0.5, 0);
     /* a bench along the back of each room */
     const bench = new THREE.Mesh(deskGeo, woodMat);
-    bench.position.set(0, y + FH * 0.5 - FH * 0.18, -D * 0.34);
+    bench.position.set(0, y + FH * 0.07 + FH * 0.11, -D * 0.36);
     tower.add(slab, back, left, right, bench);
+  }
+
+  /* furniture: every floor is a working room, not an empty shelf.
+     Two rows of desks plus a run of filing cabinets, all instanced. */
+  const deskUnit = new THREE.BoxGeometry(0.34, 0.16, 0.24);
+  const chairUnit = new THREE.BoxGeometry(0.16, 0.14, 0.16);
+  const cabUnit = new THREE.BoxGeometry(0.2, 0.42, 0.18);
+  const deskInst = new THREE.InstancedMesh(deskUnit, woodMat, FLOORS * 4);
+  const chairInst = new THREE.InstancedMesh(chairUnit,
+    new THREE.MeshStandardMaterial({ color: 0x5c6b70, roughness: .7 }), FLOORS * 4);
+  const cabInst = new THREE.InstancedMesh(cabUnit,
+    new THREE.MeshStandardMaterial({ color: 0xa9927a, roughness: .8 }), FLOORS * 6);
+  tower.add(deskInst, chairInst, cabInst);
+
+  /* floor numbers on the left flank, every fifth storey, so the climb is legible */
+  for (let i = 5; i <= FLOORS; i += 5) {
+    const plaque = sign(String(i), 0.5, 0.26, "#5a5344");
+    plaque.position.set(-W * 0.5 - 0.02, i * FH - FH * 0.35, D * 0.42);
+    plaque.rotation.y = -Math.PI / 2;
+    tower.add(plaque);
+  }
+
+  const furn = new THREE.Object3D();
+  const DECK = FH * 0.07;                 // top surface of a slab
+  for (let i = 0; i < FLOORS; i++) {
+    const deck = i * FH + DECK;
+    for (let k = 0; k < 4; k++) {
+      const x = -W * 0.32 + k * (W * 0.21);
+      furn.position.set(x, deck + 0.08, -D * 0.22);
+      furn.rotation.set(0, 0, 0); furn.scale.setScalar(1); furn.updateMatrix();
+      deskInst.setMatrixAt(i * 4 + k, furn.matrix);
+      furn.position.set(x, deck + 0.07, -D * 0.04);
+      furn.updateMatrix();
+      chairInst.setMatrixAt(i * 4 + k, furn.matrix);
+    }
+    for (let k = 0; k < 6; k++) {
+      furn.position.set(-W * 0.42 + k * 0.17, deck + 0.21, D * 0.14);
+      furn.scale.setScalar(1); furn.updateMatrix();
+      cabInst.setMatrixAt(i * 6 + k, furn.matrix);
+    }
+  }
+
+  /* lamps at the open front, so the rooms are not shadow boxes */
+  for (let i = 1; i < FLOORS; i += 4) {
+    const lamp = new THREE.PointLight(0xffeed6, 0.55, 15, 2);
+    lamp.position.set(0, i * FH + FH * 0.5, D * 0.34);
+    tower.add(lamp);
   }
 
   /* --- ground floor: courtyard, doorway, reception, elevator shafts --- */
@@ -141,8 +191,8 @@ function boot() {
   mailbox.position.set(DOOR_X + 1.15, 0.55, DOOR_Z - 0.1);
   tower.add(dpostL, dpostR, lintel, canopy, mailbox);
 
-  const sMail = sign("MAILROOM", 1.5, 0.37, "#c8553d");
-  sMail.position.set(DOOR_X, 1.42, DOOR_Z + 0.5);
+  const sMail = sign("MAILROOM", 1.2, 0.3, "#c8553d");
+  sMail.position.set(DOOR_X, 1.5, DOOR_Z + 0.12);
   tower.add(sMail);
 
   const DESK_X = -1.75, DESK_Z = 0.75;
@@ -155,8 +205,8 @@ function boot() {
   counterTop.position.set(DESK_X, Y0 + 0.46, DESK_Z);
   tower.add(counter, counterTop);
 
-  const sRecep = sign("RECEPTION", 1.6, 0.4, "#1f4e5f");
-  sRecep.position.set(DESK_X, Y0 + 0.95, DESK_Z + 0.3);
+  const sRecep = sign("RECEPTION", 1.35, 0.34, "#1f4e5f");
+  sRecep.position.set(DESK_X, Y0 + 0.82, DESK_Z + 0.28);
   tower.add(sRecep);
 
   /* four shafts, and a lit cabin riding in each */
@@ -182,8 +232,8 @@ function boot() {
     return cab;
   });
 
-  const sLift = sign("ELEVATORS", 1.7, 0.42, "#1f4e5f");
-  sLift.position.set(1.85, Y0 + 1.35, SHAFT_Z + 0.2);
+  const sLift = sign("ELEVATORS", 1.4, 0.34, "#1f4e5f");
+  sLift.position.set(1.85, Y0 + 0.95, SHAFT_Z + 0.14);
   tower.add(sLift);
 
   /* --- investigators: capsule body + head, one pair per token --- */
@@ -288,6 +338,8 @@ function boot() {
     return v;
   }
 
+  const inspectMatch = /[?&]floor=(\d+)/.exec(location.search);
+  const INSPECT = inspectMatch ? Number(inspectMatch[1]) : null;
   const target = new THREE.Vector3(0, 2, 0);
   const camPos = new THREE.Vector3(12, 3, 24);
 
@@ -300,14 +352,30 @@ function boot() {
     // low over the lobby when the story is on floor 0, then climb alongside
     const towerY = af * towerH;
     const low = Math.max(0, 1 - af * 9);           // 1 at the lobby, 0 by floor ~5
-    const orbit = reduceMotion ? 0 : Math.sin(t * 0.14) * 0.3;
-    const r = 22 - p * 5 - low * 8.5;
-    const camY = towerY + 4.4 - low * 3.4;
+    // Frame a band of ~9 floors around the storey the story is on, so the rooms
+    // are big enough to read. Step back for the whole tower at the very top.
+    const wide = Math.max(0, (af - 0.86) / 0.14);   // 0 → 1 over the last act
+    const orbit = -0.55 + (reduceMotion ? 0 : Math.sin(t * 0.14) * 0.16);
+    const r = (11.5 + wide * 14) - low * 5.5;
+    const camY = towerY + 4.6 + wide * 8 - low * 4.0;
 
-    camPos.set(Math.sin(orbit) * r + low * 1.2, camY, Math.cos(orbit) * r);
+    if (INSPECT !== null) {
+      camPos.set(4.6, INSPECT * FH, 7.4);
+      camera.position.lerp(camPos, 0.25);
+      target.set(0, INSPECT * FH + 0.3, 0);
+      camera.lookAt(target);
+    } else {
+    // the active card sits on one side, so swing the framing to the other
+    const centre0 = scrollY + innerHeight / 2;
+    let actSide = 0;
+    marks.forEach((m, idx) => { if (centre0 >= m.mid - 200) actSide = idx; });
+    const side = (actSide % 2 === 0 ? 1 : -1) * (innerWidth > 900 ? 1 : 0.35);
+
+    camPos.set(Math.sin(orbit) * r + low * 2.2 - side * 3.4, camY, Math.cos(orbit) * r);
     camera.position.lerp(camPos, 0.055);
-    target.set(0, towerY + 1.5, 0);
+    target.set(side * 2.6, towerY + (wide * 6) + 0.2, 0);
     camera.lookAt(target);
+    }
 
     // investigators run their walk on a loop, staggered
     for (let i = 0; i < COUNT; i++) {
