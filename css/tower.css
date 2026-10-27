@@ -35,11 +35,11 @@ body{
 #acts{position:relative;z-index:2}
 .act{
   min-height:100svh;display:grid;align-items:center;
-  padding:12vh clamp(1.25rem,6vw,7rem);
+  padding:12vh clamp(1.25rem,4vw,4rem);
   grid-template-columns:minmax(0,1fr);
 }
 .act .card{
-  max-width:46rem;
+  max-width:34rem;
   background:linear-gradient(180deg,rgba(244,241,234,.96),rgba(244,241,234,.9));
   border:1px solid var(--line);border-radius:4px;
   padding:clamp(1.5rem,3.2vw,3rem);
