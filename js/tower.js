@@ -4,6 +4,8 @@ import { acts } from "./content.js";
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- narrative into the DOM (readable without WebGL) ---------- */
+/* **x** marks something you can watch happen on the 3D screen */
+const bold = (t) => t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 const main = document.getElementById("acts");
 acts.forEach((a, i) => {
   const sec = document.createElement("section");
@@ -14,8 +16,8 @@ acts.forEach((a, i) => {
     <div class="card">
       <p class="eyebrow">${a.eyebrow}</p>
       <h2>${a.title}<span class="plaque">${a.plaque}</span></h2>
-      ${a.story.map((p) => `<p>${p}</p>`).join("")}
-      <p class="example"><b>Step by step</b>${a.example}</p>
+      ${a.story.map((p) => `<p>${bold(p)}</p>`).join("")}
+      <p class="example"><b>Step by step</b>${bold(a.example)}</p>
       <p class="who-else"><b>Who else</b>${a.whoElse}</p>
     </div>`;
   main.appendChild(sec);
@@ -191,6 +193,25 @@ function boot() {
   mailbox.position.set(DOOR_X + 1.15, 0.55, DOOR_Z - 0.1);
   tower.add(dpostL, dpostR, lintel, canopy, mailbox);
 
+  /* a mat under the doorway and a rail to the counter, so the entry line reads */
+  const mat = new THREE.Mesh(
+    new THREE.BoxGeometry(1.7, 0.02, 3.6),
+    new THREE.MeshStandardMaterial({ color: 0xa8b3b6, roughness: .95 })
+  );
+  mat.position.set(DOOR_X - 0.15, 0.01, DOOR_Z + 0.4);
+  tower.add(mat);
+  const railMat = new THREE.MeshStandardMaterial({ color: 0x8a8377, roughness: .8 });
+  for (const rz of [1.55, 2.35]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.03, 0.03), railMat);
+    rail.position.set(0.85, 0.34, rz);
+    tower.add(rail);
+    for (const rx of [-0.45, 0.85, 2.15]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.34, 0.035), railMat);
+      post.position.set(rx, 0.17, rz);
+      tower.add(post);
+    }
+  }
+
   const sMail = sign("MAILROOM", 1.2, 0.3, "#c8553d");
   sMail.position.set(DOOR_X, 1.5, DOOR_Z + 0.12);
   tower.add(sMail);
@@ -237,7 +258,9 @@ function boot() {
   tower.add(sLift);
 
   /* --- investigators: capsule body + head, one pair per token --- */
-  const COUNT = 150;
+  /* fourteen Investigators — exactly the crowd the story counts:
+     What · is · Ninja · Tech · ?  +  https · :// · www · . · ninja · tech · .ai · / · about */
+  const COUNT = 14;
   const bodyGeo = new THREE.CapsuleGeometry(0.034, 0.062, 3, 7);
   const headGeo = new THREE.SphereGeometry(0.031, 8, 6);
   const skinMat = new THREE.MeshStandardMaterial({ color: 0x1f4e5f, roughness: .45, metalness: .12 });
@@ -251,7 +274,7 @@ function boot() {
 
   const invData = Array.from({ length: COUNT }, (_, i) => ({
     lane: i % 4,
-    phase: (i / COUNT) * 0.92 + Math.random() * 0.02,
+    phase: (i / COUNT) * 0.9 + Math.random() * 0.015,
     slot: Math.floor(i / 4) % 9,
     seed: Math.random() * 100,
   }));
@@ -380,7 +403,7 @@ function boot() {
     // investigators run their walk on a loop, staggered
     for (let i = 0; i < COUNT; i++) {
       const d = invData[i];
-      let u = (t * 0.055 + d.phase) % 1;
+      let u = (t * 0.032 + d.phase) % 1;
       const pos = walkPath(u, d.lane);
       const walking = u < 0.56;
       const step = reduceMotion ? 0 : Math.sin(t * 9 + d.seed) * (walking ? 0.012 : 0.004);
