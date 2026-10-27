@@ -418,6 +418,96 @@ function boot() {
   tower.add(person(MAIL_X - 0.42, MAIL_Z - 0.4, Y0, 0x8c3f2c));
   tower.add(person(MAIL_X + 0.42, MAIL_Z - 0.4, Y0, 0x8c3f2c));
 
+  /* --- the three working floors that need their own furniture --- */
+  const micMat2 = new THREE.MeshStandardMaterial({ color: 0x2f3a44, roughness: .35, metalness: .55 });
+  const seatMat = new THREE.MeshStandardMaterial({ color: 0x7c8a90, roughness: .75 });
+  {
+    // floor 8: the conference room — a long table, 64 microphones overhead
+    const deck = 8 * FH + FH * 0.07;
+    const table = new THREE.Mesh(new THREE.BoxGeometry(W * 0.62, 0.13, 0.42), woodMat);
+    table.position.set(0, deck + 0.07, -D * 0.12);
+    tower.add(table);
+    for (let k = 0; k < 14; k++) {
+      const x = -W * 0.28 + k * (W * 0.048);
+      const mic = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.13, 6), micMat2);
+      mic.position.set(x, deck + 0.34, -D * 0.12);
+      tower.add(mic);
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.1, 0.13), seatMat);
+      seat.position.set(x, deck + 0.05, -D * 0.12 + 0.34);
+      tower.add(seat);
+    }
+    // a ring of microphones hanging from the ceiling
+    for (let k = 0; k < 8; k++) {
+      const mic = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 5), micMat2);
+      mic.position.set(-W * 0.3 + k * (W * 0.086), deck + 0.48, D * 0.06);
+      tower.add(mic);
+    }
+
+    // floor 14: the clinic — a GP's desk and rows of specialist booths
+    const cd = 14 * FH + FH * 0.07;
+    const gpDesk = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.14, 0.4), woodMat);
+    gpDesk.position.set(W * 0.16, cd + 0.07, D * 0.10);
+    tower.add(gpDesk);
+    const gpTop = new THREE.MeshStandardMaterial({ color: 0x6b4a30, roughness: .7 });
+    const gpLeg = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: .9 });
+    for (const [lx, lz] of [[-0.3,-0.15],[-0.3,0.15],[0.3,-0.15],[0.3,0.15]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.13, 0.04), gpLeg);
+      leg.position.set(W * 0.16 + lx, cd + 0.065, D * 0.10 + lz);
+      tower.add(leg);
+    }
+    const gpBlotter = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.012, 0.14), gpTop);
+    gpBlotter.position.set(W * 0.16, cd + 0.147, D * 0.10);
+    tower.add(gpBlotter);
+    const sGP = sign("GP", 0.55, 0.3, "#c8553d");
+    sGP.position.set(W * 0.16, cd + 0.30, D * 0.10);
+    tower.add(sGP);
+    /* each booth is a partition with a little lit counter — a place you queue at */
+    const boothMat = new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: .8 });
+    const boothTopMat = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: .6 });
+    for (let k = 0; k < 7; k++) {
+      const bx = -W * 0.26 + k * 0.34;
+      const divider = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.30, 0.34), boothMat);
+      divider.position.set(bx - 0.15, cd + 0.15, -D * 0.12);
+      const bench = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.1, 0.16), boothTopMat);
+      bench.position.set(bx - 0.03, cd + 0.05, -D * 0.04);
+      tower.add(divider, bench);
+    }
+    const sSpec = sign("SPECIALISTS", 0.95, 0.34, "#1f4e5f");
+    sSpec.position.set(W * 0.10, cd + 0.44, -D * 0.30);
+    tower.add(sSpec);
+    tower.add(person(W * 0.16 - 0.62, D * 0.24, cd, 0x8c3f2c));
+
+    // floor 21: the reading room — the local desk, then the library stacks
+    const rd = 21 * FH + FH * 0.07;
+    const local = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.13, 0.36), woodMat);
+    local.position.set(W * 0.16, rd + 0.07, D * 0.10);
+    tower.add(local);
+    const sLocal = sign("LOCAL", 0.58, 0.3, "#1f4e5f");
+    sLocal.position.set(W * 0.16, rd + 0.30, D * 0.10);
+    tower.add(sLocal);
+    /* library stacks: bookcases with rows of coloured spines */
+    const shelfMat = new THREE.MeshStandardMaterial({ color: 0x8a7a5e, roughness: .85 });
+    const spineColours = [0xc8553d, 0x2b6a72, 0xd9b26a, 0x4a5b7a];
+    spineColours.forEach((c, ci) => {
+      const spineMat = new THREE.MeshStandardMaterial({ color: c, roughness: .8 });
+      for (let r = 0; r < 2; r++) {
+        for (let k = 0; k < 4; k++) {
+          const sx = -W * 0.26 + k * 0.34;
+          const sz = -D * 0.20 + r * 0.30;
+          const case_ = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.16), shelfMat);
+          case_.position.set(sx, rd + 0.2, sz);
+          tower.add(case_);
+          const spines = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), spineMat);
+          spines.position.set(sx, rd + 0.16 + ci * 0.09, sz + 0.09);
+          tower.add(spines);
+        }
+      }
+    });
+    const sLib = sign("LIBRARY", 0.86, 0.3, "#c8553d");
+    sLib.position.set(W * 0.02, rd + 0.44, -D * 0.34);
+    tower.add(sLib);
+  }
+
   /* --- the roof: a press conference, a one-way mirror, an intern's desk --- */
   {
     const deck = 40 * FH + FH * 0.07;
@@ -462,12 +552,6 @@ function boot() {
     tower.add(person(1.2, D * 0.26, deck, 0x3b5a63));
   }
 
-  /* --- archive cargo, stacked along the back wall --- */
-  const zipGeo = new THREE.BoxGeometry(0.1, 0.045, 0.1);
-  const zipMat = new THREE.MeshStandardMaterial({ color: 0xb08a5f, roughness: .6, metalness: .1 });
-  const zips = new THREE.InstancedMesh(zipGeo, zipMat, 160);
-  tower.add(zips);
-
   const dummy = new THREE.Object3D();
   const clock = new THREE.Clock();
 
@@ -497,14 +581,17 @@ function boot() {
   /* some acts show a specific thing: those get their own camera framing */
   const VIEWS = {
     // eye is [x, y, z] relative to the focused floor; aim is the same, in world space
-    lobby:     { eye: [ 3.4, 1.8,  6.2], aim: [ 0.4, 0.00, 1.2] },
-    reception: { eye: [ 2.6, 1.5,  5.2], aim: [-0.4, 0.10, 1.1] },
-    elevators: { eye: [ 3.2, 1.05, 7.0], aim: [ 1.85, 3.60, -0.9] }, // step back, see shafts and cars riding
+    lobby:     { fl: 0, eye: [ 3.4, 1.8,  6.2], aim: [ 0.4, 0.00, 1.2] },
+    reception: { fl: 0, eye: [ 2.6, 1.5,  5.2], aim: [-0.4, 0.10, 1.1] },
+    elevators: { fl: 3, eye: [ 3.2, 1.05, 7.0], aim: [ 1.85, 3.60, -0.9] }, // step back, see shafts and cars riding
     // eye must stay under the ceiling of the focused floor, or the slab above blocks the view
-    lockers:   { eye: [ 0.0, 0.34, 3.15], aim: [ 0.0, 0.26, -0.4] },
-    archive:   { eye: [ 0.7, 0.32, 2.95], aim: [-0.5, 0.24, -1.3] },
-    seam:      { eye: [ 2.4, 1.30, 4.4], aim: [ 0.0, 0.20, 0.0] },
-    roof:      { eye: [ 3.0, 1.40, 5.0], aim: [ 0.0, 0.30, 0.0] },
+    conference: { fl: 8, eye: [ 0.4, 0.26, 3.30], aim: [ 0.0, 0.30, -0.5] },
+    clinic:     { fl: 14, eye: [ 0.30, 0.46, 2.00], aim: [ 0.05, 0.18, -0.55] },
+    reading:    { fl: 21, eye: [ 0.30, 0.48, 1.95], aim: [ 0.05, 0.18, -0.55] },
+    lockers:   { fl: 15, eye: [ 0.0, 0.34, 3.15], aim: [ 0.0, 0.26, -0.4] },
+    archive:   { fl: 18, eye: [ 0.7, 0.32, 2.95], aim: [-0.5, 0.24, -1.3] },
+    seam:      { fl: 20, eye: [ 2.4, 1.30, 4.4], aim: [ 0.0, 0.20, 0.0] },
+    roof:      { fl: 40, eye: [ 3.0, 1.40, 5.0], aim: [ 0.0, 0.30, 0.0] },
   };
   addEventListener("resize", () => {
     marks = layoutCards();
@@ -587,7 +674,7 @@ function boot() {
     const blend = Math.max(0, Math.min(1, 1.15 - off));
     if (view) {
       // this act is about one specific thing: get close enough to actually see it
-      const vy = towerY;
+      const vy = view.fl !== undefined ? view.fl * FH : towerY;
       camPos.set(
         camPos.x + (view.eye[0] - camPos.x) * blend,
         camPos.y + (vy + view.eye[1] - camPos.y) * blend,
@@ -641,19 +728,6 @@ function boot() {
       const u = ((t * 0.035 + idx * 0.24) % 1);
       cab.position.y = 0.35 + u * (towerH - 0.9);
     });
-
-    // archive cargo along the back wall
-    for (let i = 0; i < zips.count; i++) {
-      const row = Math.floor(i / 8);
-      const col = i % 8;
-      const y = (row / 20) * towerH + 0.2;
-      dummy.position.set(-W * 0.4 + col * 0.11, y, -D * 0.44);
-      dummy.rotation.set(0, 0, 0);
-      dummy.scale.setScalar(0.9 - row * 0.006);
-      dummy.updateMatrix();
-      zips.setMatrixAt(i, dummy.matrix);
-    }
-    zips.instanceMatrix.needsUpdate = true;
 
     // brighten the band on the floor this act is about
     bands.forEach((b) => {
