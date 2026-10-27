@@ -151,8 +151,8 @@ function boot() {
   const drawerGeo = new THREE.BoxGeometry(0.26, 0.13, 0.18);
   const envGeo = new THREE.BoxGeometry(0.15, 0.1, 0.014);
   const envMat = new THREE.MeshStandardMaterial({ color: 0xd9c8a8, roughness: .85 });
-  const drawers = new THREE.InstancedMesh(drawerGeo, drawerMat, 72);
-  const envelopes = new THREE.InstancedMesh(envGeo, envMat, 36);
+  const drawers = new THREE.InstancedMesh(drawerGeo, drawerMat, 48);
+  const envelopes = new THREE.InstancedMesh(envGeo, envMat, 24);
   tower.add(drawers, envelopes);
 
   {
@@ -179,23 +179,38 @@ function boot() {
     // drawers + envelopes on the Archive floor
     const deck18 = ARCHIVE_FLOOR * FH + FH * 0.07;
     let di = 0, ei = 0;
-    for (let row = 0; row < 6; row++) {
+    for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 12; col++) {
         const x = -W * 0.46 + col * 0.21;
-        const y = deck18 + 0.07 + row * 0.14;
+        const y = deck18 + 0.075 + row * 0.125;
         fit.position.set(x, y, -D * 0.38);
         fit.rotation.set(0, 0, 0); fit.scale.setScalar(1); fit.updateMatrix();
         drawers.setMatrixAt(di++, fit.matrix);
-        if ((row + col) % 4 === 0 && ei < 36) {
+        if ((row + col) % 4 === 0 && ei < 24) {
           fit.position.set(x, y + 0.02, -D * 0.30);
           fit.rotation.set(-0.5, 0, 0); fit.updateMatrix();
           envelopes.setMatrixAt(ei++, fit.matrix);
         }
       }
     }
-    for (; ei < 36; ei++) {
+    for (; ei < 24; ei++) {
       fit.position.set(0, -50, 0); fit.scale.setScalar(0.001); fit.updateMatrix();
       envelopes.setMatrixAt(ei, fit.matrix);
+    }
+  }
+
+  /* the archive wall says what it is, from inside the room */
+  {
+    const a18 = ARCHIVE_FLOOR * FH + FH * 0.07;
+    const sArc = sign("ARCHIVE", 1.05, 0.26, "#c8553d");
+    sArc.position.set(-W * 0.06, a18 + 0.50, -D * 0.46);
+    tower.add(sArc);
+    // brass label plates on a few drawers, so the bank reads as furniture
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0xf0e5cf, roughness: .5 });
+    for (let k = 0; k < 12; k += 2) {
+      const pl = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.022, 0.01), plateMat);
+      pl.position.set(-W * 0.46 + k * 0.21, a18 + 0.44, -D * 0.287);
+      tower.add(pl);
     }
   }
 
@@ -350,7 +365,7 @@ function boot() {
   const shaftMat = new THREE.MeshStandardMaterial({ color: 0xb9b2a2, roughness: .8, metalness: .1 });
   SHAFT_X.forEach((x) => {
     for (const sx of [-0.34, 0.34]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, towerH, 0.05), shaftMat);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.085, towerH, 0.085), shaftMat);
       rail.position.set(x + sx, towerH * 0.5, SHAFT_Z);
       tower.add(rail);
     }
@@ -559,7 +574,7 @@ function boot() {
     return acts.map((a, i) => {
       const el = document.getElementById(a.id);
       const r = el.getBoundingClientRect();
-      return { i, mid: r.top + scrollY + r.height / 2 };
+      return { i, mid: r.top + scrollY + r.height / 2, top: r.top + scrollY, bot: r.top + scrollY + r.height };
     });
   }
 
@@ -578,21 +593,70 @@ function boot() {
   }
   function actProgress() { return actState().floor; }
 
-  /* some acts show a specific thing: those get their own camera framing */
+  /* Some acts are about one specific thing, so they get their own framing — and
+     a few move through the shot as you scroll, in the order the story happens:
+     you stand on the street, you walk in, and only then do you see the mailroom. */
   const VIEWS = {
-    // eye is [x, y, z] relative to the focused floor; aim is the same, in world space
-    lobby:     { fl: 0, eye: [ 3.4, 1.8,  6.2], aim: [ 0.4, 0.00, 1.2] },
-    reception: { fl: 0, eye: [ 2.6, 1.5,  5.2], aim: [-0.4, 0.10, 1.1] },
-    elevators: { fl: 3, eye: [ 3.2, 1.05, 7.0], aim: [ 1.85, 3.60, -0.9] }, // step back, see shafts and cars riding
-    // eye must stay under the ceiling of the focused floor, or the slab above blocks the view
-    conference: { fl: 8, eye: [ 0.4, 0.26, 3.30], aim: [ 0.0, 0.30, -0.5] },
-    clinic:     { fl: 14, eye: [ 0.30, 0.46, 2.00], aim: [ 0.05, 0.18, -0.55] },
-    reading:    { fl: 21, eye: [ 0.30, 0.48, 1.95], aim: [ 0.05, 0.18, -0.55] },
-    lockers:   { fl: 15, eye: [ 0.0, 0.34, 3.15], aim: [ 0.0, 0.26, -0.4] },
-    archive:   { fl: 18, eye: [ 0.7, 0.32, 2.95], aim: [-0.5, 0.24, -1.3] },
-    seam:      { fl: 20, eye: [ 2.4, 1.30, 4.4], aim: [ 0.0, 0.20, 0.0] },
-    roof:      { fl: 40, eye: [ 3.0, 1.40, 5.0], aim: [ 0.0, 0.30, 0.0] },
+    // fl pins the camera to the act's real floor. at: 0 → 1 is the act's own progress.
+    lobby: { fl: 0, path: [
+      { at: 0.00, eye: [ 5.35, 1.62, 9.75], aim: [ 1.90, 1.10, 3.45] }, // out on the street, facing the entrance
+      { at: 0.42, eye: [ 2.35, 1.35, 3.05], aim: [ 1.85, 0.60, 1.55] }, // through the door, looking at the sorting table
+      { at: 1.00, eye: [ 3.05, 1.15, 3.55], aim: [ 1.62, 0.50, 1.45] }, // the mailroom, and the queue forming below it
+    ] },
+    reception: { fl: 0, path: [
+      { at: 0.00, eye: [ 2.90, 1.30, 4.55], aim: [ 0.55, 0.42, 1.35] }, // the queue, waiting its turn
+      { at: 0.55, eye: [ 0.70, 0.95, 3.35], aim: [-0.45, 0.42, 1.25] }, // walking them up to the counter
+      { at: 1.00, eye: [-0.50, 0.78, 2.60], aim: [-0.85, 0.38, 1.10] }, // the clipboard changing hands
+    ] },
+    elevators: { fl: 0, path: [
+      { at: 0.00, eye: [ 4.35, 2.30, 5.10], aim: [ 1.90, 4.30, -0.92] }, // stand back, look up the four shafts
+      { at: 1.00, eye: [ 3.05, 3.10, 4.05], aim: [ 1.95, 5.60, -0.92] }, // ride up alongside a rising car
+    ] },
+    conference: { fl: 8, path: [
+      { at: 0.00, eye: [ 0.55, 0.30, 3.45], aim: [ 0.00, 0.34, -0.55] },
+      { at: 1.00, eye: [ 0.15, 0.34, 2.15], aim: [-0.10, 0.26, -0.60] }, // push in on the table and its mics
+    ] },
+    clinic: { fl: 14, path: [
+      { at: 0.00, eye: [ 0.65, 0.52, 2.75], aim: [ 0.00, 0.24, -0.50] },
+      { at: 1.00, eye: [ 0.30, 0.46, 2.00], aim: [ 0.05, 0.18, -0.55] },
+    ] },
+    reading: { fl: 21, path: [
+      { at: 0.00, eye: [ 0.65, 0.54, 2.70], aim: [ 0.00, 0.24, -0.50] },
+      { at: 1.00, eye: [ 0.30, 0.48, 1.95], aim: [ 0.05, 0.18, -0.55] },
+    ] },
+    lockers: { fl: 15, path: [
+      { at: 0.00, eye: [-0.95, 0.48, 3.40], aim: [ 0.00, 0.30, -0.35] },
+      { at: 1.00, eye: [ 0.00, 0.34, 3.15], aim: [ 0.00, 0.26, -0.40] }, // close on the locker doors
+    ] },
+    archive: { fl: 18, path: [
+      { at: 0.00, eye: [ 1.15, 0.60, 2.15], aim: [-0.20, 0.62, -1.58] }, // the wall of drawers, wide
+      { at: 1.00, eye: [ 0.55, 0.50, 1.35], aim: [-0.30, 0.55, -1.60] },  // in on the open envelopes
+    ] },
+    seam: { fl: 20, path: [
+      { at: 0.00, eye: [ 3.60, 0.55, 4.10], aim: [ 0.20, 0.30, -0.60] }, // the stained floor, side on
+      { at: 1.00, eye: [ 2.35, 0.42, 3.10], aim: [ 0.00, 0.28, -0.55] },  // in on the red seam
+    ] },
+    roof: { fl: 40, path: [
+      { at: 0.00, eye: [ 3.60, 1.85, 5.60], aim: [ 0.00, 0.30, 0.00] },
+      { at: 1.00, eye: [ 3.00, 1.40, 5.00], aim: [ 0.00, 0.30, 0.00] },
+    ] },
   };
+
+  /* the shot for progress f through the act: a gentle glide between waypoints */
+  function shotAt(view, f) {
+    const p = view.path;
+    if (!p) return { eye: view.eye, aim: view.aim };
+    let a = p[0], b = p[p.length - 1];
+    for (let k = 0; k < p.length - 1; k++) if (f >= p[k].at) { a = p[k]; b = p[k + 1]; }
+    const u = Math.min(1, Math.max(0, (f - a.at) / Math.max(1e-4, b.at - a.at)));
+    const e = u * u * (3 - 2 * u);          // ease in, ease out — never a hard cut
+    const m = (x, y) => x + (y - x) * e;
+    return {
+      eye: [m(a.eye[0], b.eye[0]), m(a.eye[1], b.eye[1]), m(a.eye[2], b.eye[2])],
+      aim: [m(a.aim[0], b.aim[0]), m(a.aim[1], b.aim[1]), m(a.aim[2], b.aim[2])],
+    };
+  }
+
   addEventListener("resize", () => {
     marks = layoutCards();
     camera.aspect = innerWidth / innerHeight;
@@ -669,20 +733,23 @@ function boot() {
     let aimY = towerY + (wide * 6) + 0.2;
     let aimX = side * 2.6 * (1 - low) + low * 0.6;
 
-    // full commitment while this act is the one on screen, easing off on the way out
-    const off = Math.abs(scrollY + innerHeight / 2 - marks[st.i].mid) / (innerHeight * 0.55);
-    const blend = Math.max(0, Math.min(1, 1.15 - off));
+    // fully committed while the card is on screen — the shot plays from the top of
+    // the card to the bottom of it, then eases back to the wide view between acts
+    const c0 = scrollY + innerHeight / 2, mk = marks[st.i];
+    const out = c0 < mk.top ? mk.top - c0 : (c0 > mk.bot ? c0 - mk.bot : 0);
+    const blend = Math.max(0, Math.min(1, 1 - out / (innerHeight * 0.5)));
     if (view) {
       // this act is about one specific thing: get close enough to actually see it
+      const shot = shotAt(view, st.frac);
       const vy = view.fl !== undefined ? view.fl * FH : towerY;
       camPos.set(
-        camPos.x + (view.eye[0] - camPos.x) * blend,
-        camPos.y + (vy + view.eye[1] - camPos.y) * blend,
-        camPos.z + (view.eye[2] - camPos.z) * blend,
+        camPos.x + (shot.eye[0] - camPos.x) * blend,
+        camPos.y + (vy + shot.eye[1] - camPos.y) * blend,
+        camPos.z + (shot.eye[2] - camPos.z) * blend,
       );
-      aimX = aimX + (view.aim[0] - aimX) * blend;
-      aimY = aimY + (vy + view.aim[1] - aimY) * blend;
-      target.set(aimX, aimY, view.eye[2] > 0 ? view.aim[2] : 0);
+      aimX = aimX + (shot.aim[0] - aimX) * blend;
+      aimY = aimY + (vy + shot.aim[1] - aimY) * blend;
+      target.set(aimX, aimY, shot.eye[2] > 0 ? shot.aim[2] : 0);
     } else {
       target.set(aimX, aimY, 0);
     }
