@@ -15,10 +15,8 @@ acts.forEach((a, i) => {
   sec.innerHTML = `
     <div class="card">
       <p class="eyebrow">${a.eyebrow}</p>
-      <h2>${a.title}<span class="plaque">${a.plaque}</span></h2>
+      <h2>${a.title}</h2>
       ${a.story.map((p) => `<p>${bold(p)}</p>`).join("")}
-      <p class="example"><b>Step by step</b>${bold(a.example)}</p>
-      <p class="who-else"><b>Who else</b>${a.whoElse}</p>
     </div>`;
   main.appendChild(sec);
 });
@@ -104,16 +102,60 @@ function boot() {
   const backMat  = new THREE.MeshStandardMaterial({ color: 0xa89a80, roughness: .95, metalness: .02 });
   const woodMat  = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: .7, metalness: .05 });
 
-  const slabGeo = new THREE.BoxGeometry(W, FH * 0.14, D);
+  const slabThick = FH * 0.14;
   const backGeo = new THREE.BoxGeometry(W * 0.98, FH * 0.86, 0.08);
   const sideGeo = new THREE.BoxGeometry(0.09, FH * 0.86, D * 0.98);
   const deskGeo = new THREE.BoxGeometry(W * 0.52, FH * 0.22, 0.34);
 
+  /* --- four elevator shafts, cut through every slab ---
+     The shaft opening is a real hole in each floor, not a bar passing through
+     concrete: a slab is laid as front strip, back strip, and fillers either side
+     of each shaft. That is what makes the building read as a building. */
+  const SHAFT_X = [-0.75, 0.15, 1.05, 1.95];
+  const SHAFT_Z = -D * 0.22;
+  const SHAFT_W = 0.34;                 // half-width of a shaft opening
+  const SHAFT_HOLE = 0.52;              // half-depth of the opening
+  const HOLES = SHAFT_X.map((x) => [x - SHAFT_W, x + SHAFT_W]);
+
+  /* the strips that make up one floor slab, as [x0, x1, z0, z1] in local space */
+  const SLAB_STRIPS = (() => {
+    const zFront = SHAFT_Z + SHAFT_HOLE, zBack = SHAFT_Z - SHAFT_HOLE;
+    const out = [
+      [-W / 2, W / 2, zFront, D / 2],           // the room side of the slab
+      [-W / 2, W / 2, -D / 2, zBack],           // behind the shafts
+    ];
+    let cursor = -W / 2;
+    for (const [a, b] of HOLES) { out.push([cursor, a, zBack, zFront]); cursor = b; }
+    out.push([cursor, W / 2, zBack, zFront]);
+    return out;
+  })();
+
+  const slabUnit = new THREE.BoxGeometry(1, 1, 1);
+  const slabInst = new THREE.InstancedMesh(slabUnit, floorMat, SLAB_STRIPS.length * FLOORS);
+  const seamInst = new THREE.InstancedMesh(slabUnit, seamMat, SLAB_STRIPS.length);
+  {
+    const fit = new THREE.Object3D();
+    let si = 0, mi = 0;
+    for (let i = 0; i < FLOORS; i++) {
+      const y = i * FH;
+      for (const [x0, x1, z0, z1] of SLAB_STRIPS) {
+        fit.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
+        fit.rotation.set(0, 0, 0);
+        fit.scale.set(x1 - x0, slabThick, z1 - z0);
+        fit.updateMatrix();
+        if (i === 20) seamInst.setMatrixAt(mi++, fit.matrix);
+        else slabInst.setMatrixAt(si++, fit.matrix);
+      }
+    }
+    // hide the unused tail of the instanced buffer
+    fit.scale.set(0.001, 0.001, 0.001); fit.updateMatrix();
+    for (; si < slabInst.count; si++) slabInst.setMatrixAt(si, fit.matrix);
+    tower.add(slabInst, seamInst);
+  }
+
   for (let i = 0; i < FLOORS; i++) {
     const y = i * FH;
     const isSeam = i === 20;
-    const slab = new THREE.Mesh(slabGeo, isSeam ? seamMat : floorMat);
-    slab.position.y = y;
     const mat = i < 20 ? encMat : decMat;
     const back = new THREE.Mesh(backGeo, isSeam ? seamMat : backMat);
     back.position.set(0, y + FH * 0.5, -D * 0.5 + 0.06);
@@ -124,7 +166,7 @@ function boot() {
     /* a bench along the back of each room */
     const bench = new THREE.Mesh(deskGeo, woodMat);
     bench.position.set(0, y + FH * 0.07 + FH * 0.11, -D * 0.36);
-    tower.add(slab, back, left, right, bench);
+    tower.add(back, left, right, bench);
   }
 
   /* furniture: every floor is a working room, not an empty shelf.
@@ -229,8 +271,14 @@ function boot() {
     const mat = new THREE.MeshBasicMaterial({ color: 0xc8553d, transparent: true, opacity: 0.12 });
     const band = new THREE.Mesh(new THREE.BoxGeometry(W * 1.02, 0.03, D * 1.02), mat);
     band.position.set(0, fl * FH + FH * 0.07, 0);
-    tower.add(band);
-    return { fl, mat, act: HILITE[k] };
+    // a soft coloured haze that lives inside the storey, so the whole floor lights up
+    const glow = new THREE.Mesh(
+      new THREE.BoxGeometry(W * 0.98, FH * 0.7, D * 0.98),
+      new THREE.MeshBasicMaterial({ color: 0xffb347, transparent: true, opacity: 0.0, depthWrite: false })
+    );
+    glow.position.set(0, fl * FH + FH * 0.5, 0);
+    tower.add(band, glow);
+    return { fl, mat, glow: glow.material, act: HILITE[k] };
   });
 
   /* name the special floors on the building itself */
@@ -371,8 +419,7 @@ function boot() {
   tower.add(sRecep);
 
   /* four shafts, and a lit cabin riding in each */
-  const SHAFT_X = [-0.75, 0.15, 1.05, 1.95];   // keeps every rail inside the shell
-  const SHAFT_Z = -D * 0.22;
+  /* (SHAFT_X, SHAFT_Z and the opening are declared above, with the slabs) */
   const shaftMat = new THREE.MeshStandardMaterial({ color: 0xb9b2a2, roughness: .8, metalness: .1 });
   /* rail segments run storey by storey, between the slabs — no bars sawing through floors */
   {
@@ -397,17 +444,31 @@ function boot() {
     emissive: 0xffcf85, emissiveIntensity: .95,
   });
   const cabGeo = new THREE.BoxGeometry(0.6, 0.54, 0.6);
-  const parkedMat = new THREE.MeshStandardMaterial({
+  /* one cabin per shaft — nothing rides outside a shaft, nothing parked in a lobby */
+  const cabLamp = new THREE.MeshStandardMaterial({
     color: 0xfff3d8, roughness: .3, metalness: .2,
     emissive: 0xffcf85, emissiveIntensity: 1.15,
   });
-  const parked = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.5, 0.56), parkedMat);
-  parked.position.set(SHAFT_X[1], 0.5, SHAFT_Z + 0.12);
-  tower.add(parked);
-  const cabs = SHAFT_X.map((x) => {
+  const cabs = SHAFT_X.map((x, idx) => {
     const cab = new THREE.Mesh(cabGeo, cabMat);
-    cab.position.set(x, 0.4, SHAFT_Z);
+    cab.position.set(x, Y0 + 0.02, SHAFT_Z);
     tower.add(cab);
+    // a lintel over each opening so you can read the shaft as a doorway, not a hole
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(SHAFT_W * 2 + 0.16, 0.06, 0.05), cabLamp);
+    lintel.position.set(x, Y0 + 0.56, SHAFT_Z + SHAFT_HOLE + 0.03);
+    tower.add(lintel);
+    // a lit back wall for every shaft, so all four read at a glance from the lobby
+    const shaftBack = new THREE.Mesh(
+      new THREE.BoxGeometry(SHAFT_W * 2 - 0.02, FH * 0.82, 0.03),
+      new THREE.MeshStandardMaterial({ color: 0x2b4a55, roughness: .8,
+        emissive: 0x1f4e5f, emissiveIntensity: .55 })
+    );
+    shaftBack.position.set(x, Y0 + FH * 0.45, SHAFT_Z - SHAFT_HOLE + 0.02);
+    tower.add(shaftBack);
+    // and a number plate above each, 1 to 4, so the "four elevators" line is legible
+    const plate = sign(String(idx + 1), 0.2, 0.2, "#c8553d");
+    plate.position.set(x, Y0 + 0.68, SHAFT_Z + SHAFT_HOLE + 0.02);
+    tower.add(plate);
     return cab;
   });
 
@@ -416,9 +477,10 @@ function boot() {
   tower.add(sLift);
 
   /* --- investigators: capsule body + head, one pair per token --- */
-  /* fourteen Investigators — exactly the crowd the story counts:
-     What · is · Ninja · Tech · ?  +  https · :// · www · . · ninja · tech · .ai · / · about */
-  const COUNT = 14;
+  /* eighteen Investigators — exactly the crowd the story counts:
+     Expand · Humanity · 's · Productivity · by · Collapsing · the · Distance ·
+     Between · Idea · and · Impact · . · What · is · Ninja · Tech · ? */
+  const COUNT = 18;
   const bodyGeo = new THREE.CapsuleGeometry(0.034, 0.062, 3, 7);
   const headGeo = new THREE.SphereGeometry(0.031, 8, 6);
   const skinMat = new THREE.MeshStandardMaterial({ color: 0x1f4e5f, roughness: .45, metalness: .12 });
@@ -430,13 +492,20 @@ function boot() {
   const dossiers = new THREE.InstancedMesh(dossierGeo, dossierMat, COUNT);
   tower.add(bodies, heads, dossiers);
 
-  /* the fourteen tokens, in the order the prompt splits into them */
-  const TOKENS = ["What", "is", "Ninja", "Tech", "?", "https", "://", "www", ".",
-                  "ninja", "tech", ".ai", "/", "about"];
+  /* the eighteen tokens, in the order the prompt splits into them */
+  const TOKENS = ["Expand", "Humanity", "'s", "Productivity", "by", "Collapsing",
+                  "the", "Distance", "Between", "Idea", "and", "Impact", ".",
+                  "What", "is", "Ninja", "Tech", "?"];
 
   const invData = Array.from({ length: COUNT }, (_, i) => ({
     lane: i % 4,
-    phase: (i / COUNT) * 0.9 + Math.random() * 0.015,
+    row: Math.floor(i / 4),
+    berth: Math.floor(i / 4),              // their place inside the cabin
+    /* a crew of four boards one lane together and rides together, so every cabin
+       is full of the people the story counts — and nobody is ever in mid-air */
+    /* four crews, one per shaft, riding almost together: four cabins rise at once,
+       each one full */
+    phase: (i % 4) * 0.05 + Math.floor(i / 4) * 0.006,
     slot: Math.floor(i / 4) % 9,
     seed: Math.random() * 100,
   }));
@@ -461,6 +530,34 @@ function boot() {
     g.add(b, h);
     g.position.set(x, y, z);
     return g;
+  }
+  /* staff at work in the rooms the story visits, so no room is ever empty:
+     people filing in the Archive, specialists at the Clinic, the panel at the
+     conference table, readers in the library, the crowd on the roof */
+  {
+    const near = (fl) => fl * FH + FH * 0.07;
+    const workers = [
+      // the Archive: two clerks pulling drawers, one carrying an envelope
+      [ARCHIVE_FLOOR, -W * 0.30, -D * 0.30, 0x2f6b7a],
+      [ARCHIVE_FLOOR, -W * 0.12, -D * 0.32, 0x2f6b7a],
+      [ARCHIVE_FLOOR,  W * 0.04, -D * 0.22, 0x8c3f2c],
+      [ARCHIVE_FLOOR,  W * 0.20, -D * 0.34, 0x2f6b7a],
+      // the Clinic: a GP and two specialists in their booths
+      [14, W * 0.16, D * 0.10, 0x8c3f2c],
+      [14, -W * 0.26, D * 0.02, 0x2f6b7a],
+      [14, -W * 0.10, D * 0.04, 0x6a5a8c],
+      // the conference floor: heads of department around the table
+      [8, -W * 0.20, -D * 0.12 + 0.42, 0x2f6b7a],
+      [8,  W * 0.16, -D * 0.12 - 0.42, 0x6a5a8c],
+      [8,  W * 0.02, -D * 0.12 + 0.42, 0x8c3f2c],
+      // the reading room
+      [21, -W * 0.22, D * 0.04, 0x2f6b7a],
+      [21,  W * 0.20, D * 0.02, 0x6a5a8c],
+      // Engram: the register desks
+      [15, -W * 0.28, D * 0.00, 0x8c3f2c],
+      [15,  W * 0.24, D * 0.02, 0x2f6b7a],
+    ];
+    for (const [fl, x, z, c] of workers) tower.add(person(x, z, near(fl), c));
   }
   tower.add(person(DESK_X, DESK_Z - 0.6, Y0, 0x8c3f2c));
   /* two sorters behind the mailroom table — the staff doing the slicing */
@@ -661,8 +758,11 @@ function boot() {
       { at: 1.00, eye: [ 0.20, 0.50,  3.10], aim: [-0.55, 0.30,  1.20] }, // the clipboard changing hands
     ] },
     elevators: { fl: 0, path: [
-      { at: 0.00, eye: [ 3.60, 0.42,  3.90], aim: [ 1.30, 2.40, -0.92] }, // inside the lobby, look up the four shafts
-      { at: 1.00, eye: [ 3.00, 1.55,  3.40], aim: [ 1.20, 4.60, -0.92] }, // ride up alongside a rising car
+      // stand back inside the lobby: four open shafts across the room, cabins in them
+      { at: 0.00, eye: [ 0.60, 0.46,  1.90], aim: [-0.20, 0.34, -0.92] },
+      // then lift with a cabin, so you see the storeys drop away behind the glass
+      { at: 0.55, eye: [ 0.60, 1.90,  1.86], aim: [-0.20, 1.70, -0.92] },
+      { at: 1.00, eye: [ 0.55, 3.30,  1.84], aim: [-0.20, 3.05, -0.92] },
     ] },
     conference: { fl: 8, path: [
       { at: 0.00, eye: [ 0.55, 0.46,  3.45], aim: [ 0.00, 0.26, -0.55] },
@@ -681,12 +781,14 @@ function boot() {
       { at: 1.00, eye: [ 0.00, 0.40,  3.10], aim: [ 0.00, 0.24, -0.40] }, // close on the locker doors
     ] },
     archive: { fl: 18, path: [
-      { at: 0.00, eye: [ 1.05, 0.42,  1.75], aim: [-0.20, 0.26, -1.50] }, // the wall of drawers, wide
-      { at: 1.00, eye: [ 0.50, 0.40,  1.05], aim: [-0.30, 0.24, -1.55] }, // in on the open envelopes
+      { at: 0.00, eye: [ 2.90, 1.55,  5.20], aim: [ 0.00, 0.10, -0.30] }, // the whole storey, and the ones above and below
+      { at: 0.30, eye: [ 1.60, 0.85,  2.70], aim: [-0.10, 0.22, -1.20] }, // the wall of drawers, at eye height
+      { at: 1.00, eye: [ 0.45, 0.42,  1.15], aim: [-0.25, 0.24, -1.55] }, // in on the envelopes being filed
     ] },
     seam: { fl: 20, path: [
-      { at: 0.00, eye: [ 2.60, 0.42,  3.10], aim: [ 0.20, 0.24, -0.60] }, // the stained floor, side on
-      { at: 1.00, eye: [ 1.70, 0.38,  2.20], aim: [ 0.00, 0.22, -0.55] }, // in on the red seam
+      { at: 0.00, eye: [ 3.60, 1.60,  5.60], aim: [ 0.00, 0.06, -0.20] }, // the whole floor, so you know where you stand
+      { at: 0.32, eye: [ 2.30, 0.80,  3.40], aim: [ 0.20, 0.18, -0.60] }, // the stained deck, side on
+      { at: 1.00, eye: [ 1.35, 0.36,  1.95], aim: [ 0.00, 0.20, -0.55] }, // in on the red seam itself
     ] },
     roof: { fl: 39, path: [
       { at: 0.00, eye: [ 3.35, 0.62,  3.05], aim: [ 0.05, 0.34, -1.35] },
@@ -719,6 +821,35 @@ function boot() {
   /* the walk: door → queue → desk (dossier) → shaft → up */
   const v = new THREE.Vector3();
   function lerp(a, b, t) { return a + (b - a) * t; }
+  /* --- the ride ---
+     A cabin holds its place in the lobby until somebody boards, rises with them,
+     and slides back down once it is empty. Riders are pinned to the cabin's y, so
+     nobody is ever flying: they ride. */
+  const ROOF_DECK = 39 * FH + FH * 0.07;
+  const RIDE_IN = 0.55, RIDE_OUT = 0.85;
+  const CLIMB = 0.032;                   // one full round trip per ~31 seconds
+  /* a lane's clock. Up while the crew is aboard, back down once they have stepped
+     out. The body's height is read from this, never interpolated on its own, so a
+     rider can never drift out of the cabin carrying them. */
+  function laneClock(lane) { return (clock.getElapsedTime() * CLIMB + lane * 0.25) % 1; }
+  function cabinYFor(lane) {
+    const c = laneClock(lane);
+    let f;
+    if (c < RIDE_IN) f = 0;
+    else if (c <= RIDE_OUT) f = (c - RIDE_IN) / (RIDE_OUT - RIDE_IN);
+    else f = 1 - (c - RIDE_OUT) / (1 - RIDE_OUT);
+    f = f < 0 ? 0 : f > 1 ? 1 : f;
+    return Y0 + (f * f * (3 - 2 * f)) * (ROOF_DECK - Y0);
+  }
+  /* height is read off the lane clock, not off the walker's own progress, so a
+     rider is welded to the cabin floor no matter how they are staggered */
+  function yFor(u, lane) {
+    const c = laneClock(lane);
+    if (c < RIDE_IN) return Y0;              // on a floor
+    if (c <= RIDE_OUT) return cabinYFor(lane); // in the cabin, exactly
+    return ROOF_DECK;                        // out on the roof deck
+  }
+
   function walkPath(u, lane) {
     const laneX = SHAFT_X[lane];
     const qz = 1.30 + lane * 0.11;         // four parallel queue lines in front of the desk
@@ -731,20 +862,22 @@ function boot() {
       [0.33, -0.35, Y0, qz],                // shuffle forward toward reception
       [0.40, DESK_X + 1.15, Y0, DESK_Z + 0.5], // at the counter: clipboard handed over
       [0.47, DESK_X + 1.15, Y0, DESK_Z + 0.42],
-      [0.56, laneX, Y0, SHAFT_Z + 0.8],     // walk to a shaft
-      [0.62, laneX, Y0, SHAFT_Z + 0.1],     // step in
-      [0.99, laneX, towerH - 0.5, SHAFT_Z + 0.1],
-      [1.00, laneX, towerH - 0.5, SHAFT_Z + 0.1],
+      [0.52, laneX, Y0, SHAFT_Z + 0.86],    // walk to their shaft
+      [RIDE_IN, laneX, Y0, SHAFT_Z + 0.06], // step through the opening
+      [RIDE_OUT, laneX, Y0, SHAFT_Z],       // riding: height comes from yFor
+      [0.90, laneX, Y0, SHAFT_Z + 0.62],    // step out onto the roof
+      [1.00, laneX, Y0, SHAFT_Z + 0.74],
     ];
     let k = 0;
     while (k < pts.length - 2 && u > pts[k + 1][0]) k++;
     const a = pts[k], b = pts[k + 1];
     const span = b[0] - a[0];
     const f = span > 0 ? Math.min(1, Math.max(0, (u - a[0]) / span)) : 0;
-    v.set(lerp(a[1], b[1], f), lerp(a[2], b[2], f), lerp(a[3], b[3], f));
+    v.set(lerp(a[1], b[1], f), yFor(u, lane), lerp(a[3], b[3], f));
     return v;
   }
 
+  const veil = document.getElementById("veil");
   const inspectMatch = /[?&]floor=(\d+)/.exec(location.search);
   const INSPECT = inspectMatch ? Number(inspectMatch[1]) : null;
   const target = new THREE.Vector3(0, 2, 0);
@@ -790,6 +923,14 @@ function boot() {
     const c0 = scrollY + innerHeight / 2, mk = marks[st.i];
     const out = c0 < mk.top ? mk.top - c0 : (c0 > mk.bot ? c0 - mk.bot : 0);
     const blend = Math.max(0, Math.min(1, 1 - out / (innerHeight * 0.8)));
+    /* between acts the camera pulls back to the whole tower and then pushes in to
+       the next room — never a straight cut from one floor to another */
+    const away = 1 - blend;
+    camPos.set(
+      camPos.x * (1 + away * 0.55),
+      camPos.y + away * 3.4,
+      camPos.z * (1 + away * 0.55),
+    );
     if (view) {
       // this act is about one specific thing: get close enough to actually see it
       const shot = shotAt(view, st.frac);
@@ -808,7 +949,7 @@ function boot() {
     /* ease in, but never lag: the further the camera has to travel, the faster it
        closes the gap, so a jump between floors settles instead of trailing behind */
     const travel = camera.position.distanceTo(camPos);
-    const ease = view ? Math.min(1, 0.24 + travel * 0.5) : 0.06;
+    const ease = view ? Math.min(1, (0.10 + travel * 0.16) * (0.35 + blend * 0.65)) : 0.06;
     camera.position.lerp(camPos, ease);
     camera.lookAt(target);
     window.__cam = { eye: camPos.toArray().map(n => +n.toFixed(2)),
@@ -820,32 +961,43 @@ function boot() {
     // investigators run their walk on a loop, staggered
     for (let i = 0; i < COUNT; i++) {
       const d = invData[i];
-      let u = (t * 0.032 + d.phase) % 1;
+      let u = (t * CLIMB + d.phase) % 1;
       const pos = walkPath(u, d.lane);
       const walking = u < 0.56;
       const step = reduceMotion ? 0 : Math.sin(t * 9 + d.seed) * (walking ? 0.012 : 0.004);
       const bob = walking ? Math.abs(Math.sin(t * 9 + d.seed)) * 0.012 : 0;
 
-      dummy.position.set(pos.x, pos.y + bob, pos.z);
+      const lc = laneClock(d.lane);
+      const riding = lc >= RIDE_IN && lc <= RIDE_OUT;
+      const bx = pos.x + (riding ? (d.berth - 2) * 0.092 : 0);
+      dummy.position.set(bx, pos.y + bob, pos.z + (riding ? -0.02 : 0));
       dummy.rotation.set(0, 0, 0);
-      dummy.scale.setScalar(1);
+      dummy.scale.setScalar(riding ? 0.94 : 1);
       dummy.translateY(0.075);
       dummy.updateMatrix();
       bodies.setMatrixAt(i, dummy.matrix);
 
-      dummy.position.set(pos.x, pos.y + bob + 0.183, pos.z);
+      dummy.position.set(bx, pos.y + bob + 0.183, pos.z + (riding ? -0.02 : 0));
       dummy.scale.setScalar(1.01);
       dummy.updateMatrix();
       heads.setMatrixAt(i, dummy.matrix);
 
       // the dossier appears at the counter and is carried up
       const holding = u > 0.44 && u < 0.97;
-      dummy.position.set(pos.x + step, pos.y + bob + 0.11, pos.z + 0.075);
+      dummy.position.set(bx + step, pos.y + bob + 0.11, pos.z + 0.075);
       dummy.rotation.set(0.25, 0, 0);
       dummy.scale.setScalar(holding ? 1 : 0.001);
       dummy.updateMatrix();
       dossiers.setMatrixAt(i, dummy.matrix);
     }
+    window.__inv = invData.map((d, i) => {
+      const u = (t * CLIMB + d.phase) % 1;
+      const pos = walkPath(u, d.lane);
+      const lc2 = laneClock(d.lane);
+      return { u: +u.toFixed(2), lane: d.lane, y: +pos.y.toFixed(2),
+               cab: +cabinYFor(d.lane).toFixed(2),
+               riding: lc2 >= RIDE_IN && lc2 <= RIDE_OUT };
+    });
     bodies.instanceMatrix.needsUpdate = true;
     heads.instanceMatrix.needsUpdate = true;
     dossiers.instanceMatrix.needsUpdate = true;
@@ -853,23 +1005,27 @@ function boot() {
     // name tags follow their Investigator and always face the camera
     for (let i = 0; i < COUNT; i++) {
       const d = invData[i];
-      const u = (t * 0.032 + d.phase) % 1;
+      const u = (t * CLIMB + d.phase) % 1;
       const pos = walkPath(u, d.lane);
-      tags[i].position.set(pos.x, pos.y + 0.335, pos.z);
+      const lc = laneClock(d.lane);
+      const ridingNow = lc >= RIDE_IN && lc <= RIDE_OUT;
+      tags[i].position.set(pos.x + (ridingNow ? (d.berth - 2) * 0.092 : 0),
+                           pos.y + 0.335, pos.z);
       tags[i].quaternion.copy(camera.quaternion);
     }
 
-    // cabins ride the shafts
-    cabs.forEach((cab, idx) => {
-      const u = ((t * 0.035 + idx * 0.24) % 1);
-      cab.position.y = 0.35 + u * (towerH - 0.9);
-    });
+    // cabins ride their shafts on their lane's clock
+    cabs.forEach((cab, lane) => { cab.position.y = cabinYFor(lane); });
 
     // brighten the band on the floor this act is about
+    /* the floor being talked about glows, and breathes, so your eye lands on the
+       thing the card is describing rather than hunting for it */
+    const pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.1);
     bands.forEach((b) => {
       const isOn = act.focus && b.act === act.id && (act.floors || []).includes(b.fl);
       const near = act.focus && b.act === act.id && Math.abs(b.fl - af * 40) < 6;
-      b.mat.opacity = isOn ? 0.34 : (near ? 0.2 : 0.09);
+      b.mat.opacity = isOn ? 0.3 + pulse * 0.35 : (near ? 0.14 : 0.06);
+      b.glow.opacity = isOn ? 0.1 + pulse * 0.13 : 0;
     });
 
     // act entry highlight
@@ -879,6 +1035,8 @@ function boot() {
     document.querySelectorAll(".act").forEach((el, idx) => {
       el.classList.toggle("is-active", idx === active);
     });
+
+    if (veil) veil.style.opacity = String(Math.max(0, Math.min(1, 1 - scrollY / (innerHeight * 0.85))));
 
     const meter = document.getElementById("floor-o-meter");
     if (meter) {
