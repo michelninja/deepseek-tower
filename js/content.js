@@ -3,28 +3,27 @@
 // Naming: architect (lab) + named tower + type + year plaque. Never "the 2022 tower".
 //
 // Each act carries `floor` (0–40) so the camera can pin the tower to the story,
-// and `ninja` — the NinjaTech case file walked through the same building.
+// and `example` — one prompt walked through the building, step by step, act by act.
+// The prompt never changes: "What is NinjaTech?" — and the answer's first word.
 
 export const acts = [
   {
     id: "arrival",
     eyebrow: "Act I · The lobby",
-    title: "A case file arrives",
+    title: "Your question arrives",
     plaque: "Mailroom",
     floor: 0,
     story: [
-      "The building has one job: read enormous case files — up to a million words, pictures included — and write back an answer, one word at a time.",
-      "Your question walks in the door and the mailroom gets to work. It slices what you wrote into sub-words. Not ideas, not sentences — sub-words, taken from an official dictionary of 129,280 entries.",
+      "The building has one job: read what you typed, and write back an answer — one word at a time.",
+      "Your question walks in the door and the mailroom gets to work. It slices what you wrote into the smallest pieces of words it knows, taken from an official dictionary of 129,280 entries.",
       "Each slice becomes a person. Every token is an Investigator, and they all walk into the lobby together.",
-      "Inside, they climb the same forty floors as one another. Almost every floor does the same job — read what the floor below handed up, add one note of its own, pass it on. What changes from floor to floor is rarely the job. It is who is on duty.",
-      "A long case file means a very crowded lobby. A million-word file sends a million Investigators through the door at once — which is precisely why the rest of this building is designed the way it is.",
+      "A long question means a crowded lobby. A million-word document sends a million Investigators through the door at once — which is precisely why the rest of this building is designed the way it is.",
     ],
-    ninja:
-      "Your case file today is a Ninja agent reading a ~400-page client corpus — contracts, emails, a scanned org chart, one photograph of a whiteboard. In sub-words, that is roughly half a million Investigators queueing at the door for a single question.",
+    example:
+      "You type: What is NinjaTech? The mailroom splits it into five pieces — “What”, “is”, “Ninja”, “Tech”, “?” — so five Investigators walk in. Small lobby, five people. That is the whole crowd for this question.",
     whoElse:
       "Every tower in the skyline does this, and has since the original Transformer tower (Google, 2017). The dictionary is the same idea everywhere; only its size changes.",
   },
-
   {
     id: "dossier",
     eyebrow: "Act II · Reception",
@@ -36,12 +35,11 @@ export const acts = [
       "On the ground floor the dossier is deliberately vague. The Investigator for “apple” does not yet know whether it is a fruit or a company. That ignorance is the point: meaning is not handed out at the door, it is earned on the way up.",
       "If you attached a picture, a separate annex handles it. The Foreign Media Desk cuts the image into patches and translates each one into the same 5,120-number dossier, so picture Investigators and text Investigators can ride the tower together.",
     ],
-    ninja:
-      "The whiteboard photograph is cut into patches at the Foreign Media Desk and joins the queue as ordinary Investigators. Nothing downstream needs to know it was ever an image.",
+    example:
+      "Five clipboards are handed out. The “Ninja” Investigator and the “Tech” Investigator get two completely different dossiers — and neither has been told they belong together, or that a company by that name exists. Nobody has told anyone what the question is about.",
     whoElse:
       "Most towers call this the embedding table and leave it at that. The DeepSeek-V4.1-Flash tower (DeepSeek, 2026) also runs a dedicated vision annex so pictures join the queue as equals.",
   },
-
   {
     id: "elevator",
     eyebrow: "Act III · The climb",
@@ -54,12 +52,11 @@ export const acts = [
       "The clerk used to be slow. To decide how to reshuffle, he first had to read every clipboard — so the building made three separate trips to the filing cabinet before anyone could move up a floor. On this floor he simply reuses last floor's settings, which lets one fused shift do the whole reshuffle: read once, mix, write back once.",
       "Four shafts cost the same as one, because the building is built narrow and tall rather than wide. That choice — depth over width — is what frees up the budget for everything the upper floors do.",
     ],
-    ninja:
-      "Four shafts is why a Ninja agent can keep half a million Investigators on the payroll and still answer in seconds. A single-elevator building of the same size would have to be far wider, and far slower to move through.",
+    example:
+      "Five Investigators, four shafts. The clerk puts “What” and “is” in one car and “Ninja”, “Tech”, “?” in another, because they will have the most to say to each other on the way up. Nobody leaves the building; they just change cars.",
     whoElse:
       "One elevator is the default in every dense tower — the GPT-3 tower, the Llama-3-70B tower (Meta, 2024). Four shafts is DeepSeek's alone.",
   },
-
   {
     id: "attention",
     eyebrow: "Act IV · Floor work",
@@ -72,12 +69,11 @@ export const acts = [
       "Sixty-four microphones hang from the ceiling. Every Investigator speaks into all of them at once, and each microphone listens for a different kind of relevance: who is the subject, who is the verb, what is being referred to, what came before.",
       "The answers are tallied, and the Investigator writes a single new line on their clipboard: what the room just told them. Then everyone moves up a floor and does it again — forty times, a different conversation on each.",
     ],
-    ninja:
-      "This is the room where “the party in clause 4” finally gets attached to “the counterparty in the signature block”, forty pages apart in the client corpus. Distance is not an obstacle here; only floor count is.",
+    example:
+      "“Tech” asks the room about itself and the only colleague behind it is “Ninja”, so it hears about “Ninja” and nothing else. “Ninja” asks and hears “is”. “What” asks first and hears nobody at all. Each of the five now carries one new line on their clipboard.",
     whoElse:
       "The 64-microphone conference room is standard-issue in every tower — it is the original Transformer's great invention (Google, 2017). What changes between buildings is how many microphones, and how the answers are filed.",
   },
-
   {
     id: "clinic",
     eyebrow: "Act V · Floor work",
@@ -90,12 +86,11 @@ export const acts = [
       "Each Specialist is a genuine expert, but a narrow one. The General Practitioner is the opposite: broad, shallow, and always right about the basics. Everyone sees the GP; only six see a specialist.",
       "That is the trick — the building is enormous on paper and small in practice. It owns staff worth 552 billion facts, and puts barely a third of them to work on any given Investigator.",
     ],
-    ninja:
-      "The contract-clause Investigator gets sent to the six Specialists who handle indemnity, jurisdiction, term, liability, governing law and defined terms. The email-thread Investigator gets six entirely different ones, on the same floor, at the same time.",
+    example:
+      "The “Tech” Investigator is sent to six specialists: technology, companies, proper names, brand spelling, capital letters, and the word that usually follows a company name. The “?” Investigator is sent to six completely different ones. Same corridor, same minute, different experts.",
     whoElse:
       "Other towers do hire specialists — the Mixtral tower (Mistral, 2023) is the well-known example. Very few hire 384 per floor and keep the General Practitioner permanent.",
   },
-
   {
     id: "engram",
     eyebrow: "Act VI · Memory",
@@ -103,17 +98,16 @@ export const acts = [
     plaque: "Floors 2 and 15",
     floor: 15,
     story: [
-      "On two floors — the second and the fifteenth — the corridor is lined with vending machines. Two long walls of them, and no other tower in the skyline has this room at all.",
+      "On two floors — the second and the fifteenth — the corridor is lined with lockers. Two long walls of them, and no other tower in the skyline has this room at all.",
       "Each locker holds a ready-made note. When an Investigator's clipboard matches a pattern the building has seen a million times before, they do not need to think about it — they just open the locker and take the note.",
       "This is the building's memory of the obvious. Idioms, common phrases, the way a name is spelled, the shape of a date. Things no one should have to reason out from scratch every single time.",
       "Memory as furniture rather than memory as staff: 196 billion notes, stored flat, costing almost nothing to keep and nothing at all to read.",
     ],
-    ninja:
-      "When the corpus says “pursuant to Section 4.2 hereof”, the Investigator does not deduce what that means. It opens a locker. The hard questions stay in the conference room; the obvious ones get collected on the way past.",
+    example:
+      "The “Tech” Investigator recognises the shape of a company name — capital letter, one word, no space, stuck to a question mark — and takes the note that says so. The “?” Investigator collects a note about questions that expect a short answer. Two notes on the way past, no thinking required.",
     whoElse:
       "Every other tower learns these patterns the slow way, in its staff's heads, where they take up room that could have been used for thinking. Lockers are the DeepSeek tower's own idea.",
   },
-
   {
     id: "archive",
     eyebrow: "Act VII · The Archive",
@@ -126,12 +120,11 @@ export const acts = [
       "It is also why this tower can hold a million Investigators when the Llama-3-70B tower (Meta, 2024) cannot: that tower files a full-colour, 16-bit dossier for every Investigator who ever entered — 330 KB each, 43 GB for a single 128K case file. This tower files one sealed envelope per Investigator: 890 bytes.",
       "The saving compounds with length. A four-times-longer case file costs this building four times as much to store, not four times twice over. That is the difference between a tower that can read a whole contract archive and one that has to stop at a chapter.",
     ],
-    ninja:
-      "The ~400-page corpus files into the Archive at 890 bytes per Investigator. At 128K tokens that is roughly 42 GB in the other tower's system and about 114 MB here — the difference between a file an agent can resume between tool calls and one it has to reload from scratch.",
+    example:
+      "The Archive files five envelopes — what each of “What”, “is”, “Ninja”, “Tech”, “?” is, and what each one knows — and shreds the five questions. When the answer starts coming back, only those five envelopes are on file.",
     whoElse:
       "The Llama towers shrink the archive by sharing name tags between heads. This tower compresses each Investigator to a single sealed latent — an idea introduced by the DeepSeek-V2 tower.",
   },
-
   {
     id: "blockade",
     eyebrow: "Act VIII · The blockade",
@@ -144,12 +137,11 @@ export const acts = [
       "The saving is brutal and simple: reading a 100,000-token case file costs 2.0026 million floor-passes instead of 4 million. Half the building's work, gone.",
       "And the door only closes one way. Every word the building writes walks back down to the lobby and up again as an ordinary Investigator — so the case file does not stop growing just because it has been read once.",
     ],
-    ninja:
-      "This is why a Ninja agent can hold a long tool call open without the bill running away. Reading the corpus is one cost; each new word of the answer is charged at the cheap rate, because the expensive half of the building is no longer involved.",
+    example:
+      "All five Investigators queue at the door on floor 20. The fire escape allows the last 128, and they are only five, so all five keep climbing. From here on the building stops reading and starts writing: no more questions, only answers.",
     whoElse:
       "No other tower blockades its own staircase. Splitting reading from writing is the CED idea, and it belongs to the DeepSeek-V4.1-Flash tower.",
   },
-
   {
     id: "library",
     eyebrow: "Act IX · Reading",
@@ -162,12 +154,11 @@ export const acts = [
       "Then the central library. A Librarian scores a short search tag attached to every archived dossier and pulls only the 512 most relevant from the million behind them.",
       "At full context an Investigator reads 640 files and never more — 128 close neighbours, 512 chosen strangers. The cost of a conversation stays flat even when the conversation is a million words long.",
     ],
-    ninja:
-      "When the agent is asked “what did we agree about renewal?”, the Librarian pulls the renewal clause, the amendment, and the two emails that changed it — out of half a million archived Investigators. The local desk keeps the sentence readable; the library keeps the answer correct.",
+    example:
+      "This is where a short question and a long document part ways. At the local desk, “Tech” reads the four colleagues in front of it and is done — there are no 128, and no million. Ask the same thing of a 400-page contract and the Librarian has to go and fetch 512 dossiers out of half a million.",
     whoElse:
       "Most long-context towers read everything and pay for it. Sparse retrieval at this scale is the DeepSeek tower's signature.",
   },
-
   {
     id: "roof",
     eyebrow: "Act X · The roof",
@@ -180,8 +171,8 @@ export const acts = [
       "On the roof sits the Eager Intern. He drafts five words at once, guesses how confident he is in each, and hands the best run to the main tower to verify in a single pass. On average 3.51 of his drafts survive.",
       "Behind a one-way mirror the Wiretap Inspector reads the model's private scratchpad as it is written. If he sees malicious planning twice in a row, he throws the breaker — before a single harmful word reaches your screen.",
     ],
-    ninja:
-      "The Intern is what makes the answer feel live: five words drafted, one pass to check them, then streamed. The Inspector behind the mirror is NinjaTech's own addition — the tower does not police itself, the operator does.",
+    example:
+      "Five candidates are scored: “NinjaTech”, “It”, “A”, “Ninja”, “Them”. “NinjaTech” wins — four of the five Investigators are pointing at a company name nobody ever explained. That word streams to your screen, then walks back down to the lobby as a sixth Investigator. Next trip up writes “is”.",
     whoElse:
       "Drafting ahead is common; the intern's specific shape is DeepSeek's. The streaming inspector is NinjaTech's addition, not the tower's.",
   },
