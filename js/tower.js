@@ -535,10 +535,24 @@ function boot() {
                   "the", "Distance", "Between", "Idea", "and", "Impact", ".",
                   "What", "is", "Ninja", "Tech", "?"];
 
+  /* where each crew member stands once the doors close: two rows deep, three
+     across at most, all inside the cabin's 0.62 x 0.96 floor */
+  const SEATS = Array.from({ length: 4 }, (_, lane) => {
+    const crew = TOKENS.length / 4 | 0;
+    return Array.from({ length: 5 }, (_, k) => {
+      const row = k < 3 ? 0 : 1;
+      const col = k < 3 ? k : k - 3;
+      const n = k < 3 ? Math.min(3, 5) : 2;
+      return [(col - (n - 1) / 2) * 0.13, (row ? 0.16 : -0.15)];
+    });
+  });
+
   const invData = Array.from({ length: COUNT }, (_, i) => ({
     lane: i % 4,
     row: Math.floor(i / 4),
-    berth: Math.floor(i / 4),              // their place inside the cabin
+    /* their place inside the cabin: two rows deep, seats across, so a lane's
+       whole crew fits in one car without standing inside each other */
+    berth: Math.floor(i / 4),              // their row inside the cabin
     /* a crew of four boards one lane together and rides together, so every cabin
        is full of the people the story counts — and nobody is ever in mid-air */
     /* four crews, one per shaft, riding almost together: four cabins rise at once,
@@ -845,7 +859,7 @@ function boot() {
       /* a storey is only FH (0.62) tall, so the eye must stay under the ceiling:
          any higher and the camera shoots through the slab above and sees beams
          instead of the room. From just inside the door the whole lobby is open. */
-      { at: 0.00, eye: [ 5.30, 1.05,  9.20], aim: [ 1.90, 0.46,  3.20] }, // out on the street, facing the entrance
+      { at: 0.00, eye: [ 4.90, 0.52,  6.60], aim: [ 0.60, 0.26,  1.60] }, // just inside, queue in view
       /* step in past the door posts (they sit at x 1.28 and 2.52, z 3.2) and take
          the far corner: from there the table, the queue and all four shafts are
          in one frame, with nothing in the near field to hide them */
@@ -874,9 +888,9 @@ function boot() {
          an eye inside the tower passes straight through the floor slabs and spends
          the shot buried in concrete. Out here the four cars are always in clean
          air, level with each other, with people visible through the open fronts. */
-      { at: 0.00, eye: [ 0.60, 0.40,  3.55], aim: [ 0.60, 0.28, -0.92] }, // the whole shaft bank
-      { at: 0.34, eye: [ 0.60, 0.34,  3.20], aim: [ 0.60, 0.25, -0.92] },
-      { at: 1.00, eye: [ 0.60, 0.30,  2.95], aim: [ 0.60, 0.23, -0.92] }, // hold: four cars, side by side
+      { at: 0.00, eye: [ 0.60, 0.30,  2.20], aim: [ 0.60, 0.16, -0.45] }, // the whole shaft bank
+      { at: 0.34, eye: [ 0.60, 0.26,  1.95], aim: [ 0.60, 0.14, -0.45] },
+      { at: 1.00, eye: [ 0.60, 0.24,  1.75], aim: [ 0.60, 0.12, -0.45] }, // hold: four cars, side by side
     ] },
     conference: { fl: 8, path: [
       { at: 0.00, eye: [ 0.55, 0.46,  3.45], aim: [ 0.00, 0.26, -0.55] },
@@ -942,34 +956,86 @@ function boot() {
   const ROOF_DECK = 39 * FH + FH * 0.07;
   /* the cars spend most of the cycle in motion: four shafts climbing together is
      what the room is about, so a parked shaft is the exception, not the rule */
-  const RIDE_IN = 0.12, RIDE_OUT = 0.74;
+  const RIDE_IN = 0.72, RIDE_OUT = 0.90;   // step in at 0.72, step out at 0.90
   /* --- the building is driven by the reader, not by a clock ---
-     The Investigators walk at the speed you scroll. Stop, and the lobby stops.
-     Scroll back, and they walk back. A full climb of the tower takes about four
-     turns of the page, so the queue is always visibly moving while you read. */
-  const SCROLL_TURNS = 4.85;             // trips over the whole page: ends on the roof
-  let scrollP = 0;                       // 0..1 down the page, set every frame
-  let prevScrollP = 0;
-  let travel = 0;                        // accumulated trips, never wraps
-  let glide = 0;                         // signed speed of the page, for footfalls
-
-  /* a lane's clock. Up while the crew is aboard, back down once they have stepped
-     out. The body's height is read from this, never interpolated on its own, so a
-     rider can never drift out of the cabin carrying them. */
-  /* act III pins car 2: while the card is on screen its crew is aboard and the car
-     climbs with the reader's progress through the act, so the people you are reading
-     about are the people in the frame */
-  let forced = null;                     // a clock forced by the climb act
-  /* All four shafts run on the SAME clock. That is the point of the room: four
-     cars rise together, side by side, every time. Offsetting them per lane meant
-     you only ever saw one car moving, which read as one elevator, not four. */
-  function laneClock() {
-    if (forced !== null) return forced;
-    const c = travel;
-    return ((c % 1) + 1) % 1;
+     One clock for all four shafts, and that clock is the story's own floor.
+     While the story is still in the lobby the cars sit in the lobby; from the
+     moment the story starts climbing, the cars climb with the page, and they
+     only reach the roof when the story does. Scroll back and they come down. */
+  const LIFT_FROM = 0.075;               // story floor where the cars leave the lobby
+  let rideU = 0;                         // where the crew is along walk/ride, 0..1
+  let glide = 0;                         // signed page speed, for footfalls only
+  /* roughly a metre of floor between one Investigator and the next, so the four
+     crews read as four queues rather than one clump. The walk is resampled by
+     real distance, because the path's own parameter is not uniform (a stretch
+     of queue should not swallow half the spacing). */
+  /* one metre at the tower's own scale: a storey is FH (0.62) and stands for
+     about four metres of building, so a metre of floor is roughly 0.15 here */
+  const ROW_GAP = 0.30;                  // about a metre of bare floor between rows
+  const LOBBY_GAP = 0.80;                // and the same spacing as they queue
+  /* the path's own u is not uniform — a stretch of queue can swallow half of it —
+     so spacing is measured in real floor distance along the walk instead */
+  const WALK_LUT = [];                   // per lane: [u, distance] pairs
+  const LUT_N = 600;
+  function buildWalkLut() {
+    for (let lane = 0; lane < SHAFT_X.length; lane++) {
+      const table = [];
+      let acc = 0, px = null, pz = null;
+      for (let i = 0; i <= LUT_N; i++) {
+        const u = i / LUT_N;
+        const p = walkPath(u, lane);
+        if (px !== null) acc += Math.hypot(p.x - px, p.z - pz);
+        table.push([u, acc]);
+        px = p.x; pz = p.z;
+      }
+      WALK_LUT.push(table);
+    }
   }
+  function uAtDistance(lane, d) {
+    const table = WALK_LUT[lane];
+    if (!table) return rideU;
+    if (d <= 0) return 0;
+    const last = table[table.length - 1][1];
+    if (d >= last) return 1;
+    let lo = 0, hi = table.length - 1;
+    while (lo < hi - 1) {
+      const mid = (lo + hi) >> 1;
+      if (table[mid][1] < d) lo = mid; else hi = mid;
+    }
+    const d0 = table[lo][1], d1 = table[hi][1];
+    const f = d1 > d0 ? (d - d0) / (d1 - d0) : 0;
+    return table[lo][0] + (table[hi][0] - table[lo][0]) * f;
+  }
+  function distanceAtU(lane, u) {
+    const table = WALK_LUT[lane];
+    if (!table) return 0;
+    const i = Math.min(table.length - 1, Math.max(0, Math.round(u * LUT_N)));
+    return table[i][1];
+  }
+  /* the crew walks in single file, a metre apart: each row is a metre of floor
+     back along the same route, so nobody overlaps and nobody bunches up */
+  function uForRow(row, lane) {
+    if (!row) return rideU;
+    return uAtDistance(lane, distanceAtU(lane, rideU) - row * LOBBY_GAP);
+  }
+
+  function walkUFor(progress) {
+    if (progress <= LIFT_FROM) {
+      /* lobby business: the queue shuffles in from the street toward the
+         reception counter while Acts I and II are on screen, and holds there */
+      const f = progress / LIFT_FROM;
+      return 0.46 + f * 0.05;
+    }
+    /* from the moment the story starts climbing, the leader is aboard and the
+       car does the moving — the page and the cabin rise together */
+    const f = (progress - LIFT_FROM) / (1 - LIFT_FROM);
+    return RIDE_IN + f * (RIDE_OUT - RIDE_IN - 0.002);
+  }
+  /* All four shafts run on the SAME clock. That is the point of the room: four
+     cars rise together, side by side, every time. */
+  function laneClock() { return rideU; }
   function cabinYFor(lane) {
-    const c = laneClock();
+    const c = rideU;
     let f;
     if (c < RIDE_IN) f = 0;
     else if (c <= RIDE_OUT) f = (c - RIDE_IN) / (RIDE_OUT - RIDE_IN);
@@ -980,7 +1046,7 @@ function boot() {
   /* height is read off the lane clock, not off the walker's own progress, so a
      rider is welded to the cabin floor no matter how they are staggered */
   function yFor(u, lane) {
-    const c = laneClock();
+    const c = rideU;
     if (c < RIDE_IN) return Y0;              // on a floor
     if (c <= RIDE_OUT) return cabinYFor(lane) + 0.035; // standing on the cabin floor
     return ROOF_DECK;                        // out on the roof deck
@@ -991,17 +1057,17 @@ function boot() {
     const qz = 1.30 + lane * 0.11;         // four parallel queue lines in front of the desk
     const pts = [
       //  u    x                              y   z
-      [0.00, DOOR_X, Y0, DOOR_Z + 2.6],     // out on the street
+      [0.00, DOOR_X, Y0, DOOR_Z + 3.4],     // out on the street
       [0.06, DOOR_X, Y0, DOOR_Z + 0.35],    // through the entrance
-      [0.12, DOOR_X - 0.6, Y0, 1.72],       // in, past the mailroom sorting table
-      [0.20, 1.15, Y0, qz],                 // join the queue
-      [0.33, -0.35, Y0, qz],                // shuffle forward toward reception
-      [0.40, DESK_X + 1.15, Y0, DESK_Z + 0.5], // at the counter: clipboard handed over
-      [0.47, DESK_X + 1.15, Y0, DESK_Z + 0.42],
-      [0.10, laneX, Y0, SHAFT_Z + 0.86],    // walk to their shaft
+      [0.14, DOOR_X - 0.6, Y0, 1.72],       // in, past the mailroom sorting table
+      [0.24, 1.15, Y0, qz],                 // join the queue
+      [0.38, -0.35, Y0, qz],                // shuffle forward toward reception
+      [0.50, DESK_X + 1.15, Y0, DESK_Z + 0.5], // at the counter: clipboard handed over
+      [0.58, DESK_X + 1.15, Y0, DESK_Z + 0.42],
+      [0.66, laneX, Y0, SHAFT_Z + 0.86],    // walk to their shaft
       [RIDE_IN, laneX, Y0, SHAFT_Z + 0.06], // step through the opening
       [RIDE_OUT, laneX, Y0, SHAFT_Z],       // riding: height comes from yFor
-      [0.90, laneX, Y0, SHAFT_Z + 0.62],    // step out onto the roof
+      [0.95, laneX, Y0, SHAFT_Z + 0.62],    // step out onto the roof
       [1.00, laneX, Y0, SHAFT_Z + 0.74],
     ];
     let k = 0;
@@ -1022,25 +1088,20 @@ function boot() {
 
   function frame() {
     const t = clock.getElapsedTime();
+    if (!WALK_LUT.length) buildWalkLut();
     const maxScroll = Math.max(1, document.body.scrollHeight - innerHeight);
     const p = Math.min(1, Math.max(0, scrollY / maxScroll));
-    /* the Investigators are driven by the page, not by a wall clock: scrolling
-       moves them, stopping stops them, scrolling back walks them back down */
-    scrollP = p;
-    const dP = scrollP - prevScrollP;
-    prevScrollP = scrollP;
-    travel += dP * SCROLL_TURNS;
-    glide += (dP * 900 - glide) * 0.25;
-    const pace = Math.min(1, Math.abs(glide) * 8);   // 0 at rest, 1 while moving
     const st = actState();
     const af = st.floor;
     const act = acts[st.i];
     const view = VIEWS[act && act.focus];
-    /* in the climb act, car 2's crew rides for the whole card, from the lobby to
-       the roof, exactly as fast as you scroll through it */
-    if (act && act.focus === "elevators") {
-      forced = RIDE_IN + 0.02 + st.frac * (RIDE_OUT - RIDE_IN - 0.04);
-    } else forced = null;
+    /* the story's own floor is the clock: lobby acts keep the cars parked,
+       the climbing acts lift them one storey at a time, the roof act tops out.
+       Nothing boards, rides or arrives before the card you are reading says so. */
+    rideU = walkUFor(af);
+    /* page speed only drives the footfalls; position comes from the story */
+    glide += (p * 900 - glide) * 0.25;
+    const pace = Math.min(1, Math.abs(glide) * 8) * 0 + (view ? 1 : 1);
 
     // low over the lobby when the story is on floor 0, then climb alongside
     const towerY = af * towerH;
@@ -1072,7 +1133,7 @@ function boot() {
     // the card to the bottom of it, then eases back to the wide view between acts
     const c0 = scrollY + innerHeight / 2, mk = marks[st.i];
     const out = c0 < mk.top ? mk.top - c0 : (c0 > mk.bot ? c0 - mk.bot : 0);
-    const blend = Math.max(0, Math.min(1, 1 - out / (innerHeight * 0.8)));
+    const blend = Math.max(0, Math.min(1, 1 - out / (innerHeight * 0.28)));
     /* between acts the camera pulls back to the whole tower and then pushes in to
        the next room — never a straight cut from one floor to another */
     const away = 1 - blend;
@@ -1118,46 +1179,56 @@ function boot() {
                      blend: +blend.toFixed(2), act: act ? act.id : null, frac: +st.frac.toFixed(2) };
     }
 
-    // investigators run their walk on a loop, staggered
+    // investigators walk the lobby in single file, then stand in their cabins
+    const lcNow = laneClock();
+    const ridingAll = lcNow >= RIDE_IN && lcNow <= RIDE_OUT;
     for (let i = 0; i < COUNT; i++) {
       const d = invData[i];
-      let u = (laneClock() + d.row * 0.006) % 1;
+      /* On the floor everybody holds their own place, about a metre apart along the
+         walk. Once the cars move the crew stops walking and lets the cabin lift
+         them: two abreast, two rows deep, so a full crew fits inside one car. */
+      const u = ridingAll ? lcNow : uForRow(d.row, d.lane);
       const pos = walkPath(u, d.lane);
-      const walking = u < RIDE_IN;
+      const walking = !ridingAll && u < RIDE_IN;
       const swing = reduceMotion ? 0 : Math.sin(t * 9 * Math.sign(glide || 1) + d.seed);
-      const step = walking * swing * 0.012 * pace;
-      const bob = walking ? Math.abs(Math.sin(t * 9 + d.seed)) * 0.012 * pace : 0;
+      const step = walking ? swing * 0.012 : 0;
+      const bob = walking ? Math.abs(Math.sin(t * 9 + d.seed)) * 0.010 : 0;
+      const seat = SEATS[d.lane][d.berth] || [0, 0];
+      /* four crews walk four parallel lanes — otherwise all four queues stand
+         in exactly the same spot and the crowd reads as two people */
+      const ox = ridingAll ? seat[0] : (d.lane - 1.5) * 0.34;
+      const oz = ridingAll ? seat[1] : 0;
+      const bx = pos.x + ox;
 
-      const lc = laneClock();
-      const riding = lc >= RIDE_IN && lc <= RIDE_OUT;
-      const bx = pos.x + (riding ? (d.berth - 2) * 0.092 : 0);
-      dummy.position.set(bx, pos.y + bob, pos.z + (riding ? -0.02 : 0));
+      dummy.position.set(bx, pos.y + bob, pos.z + oz);
       dummy.rotation.set(0, 0, 0);
-      dummy.scale.setScalar(riding ? 1.35 : 1);
+      dummy.scale.setScalar(1);
       dummy.translateY(0.075);
       dummy.updateMatrix();
       bodies.setMatrixAt(i, dummy.matrix);
 
-      dummy.position.set(bx, pos.y + bob + 0.183, pos.z + (riding ? -0.02 : 0));
-      dummy.scale.setScalar(riding ? 1.35 : 1.01);
+      dummy.position.set(bx, pos.y + bob + 0.183, pos.z + oz);
+      dummy.scale.setScalar(1.01);
       dummy.updateMatrix();
       heads.setMatrixAt(i, dummy.matrix);
 
       // the dossier appears at the counter and is carried up
-      const holding = u > 0.44 && u < 0.97;
-      dummy.position.set(bx + step, pos.y + bob + 0.11, pos.z + 0.075);
+      const holding = !ridingAll && u > 0.42 && u < 0.98;
+      dummy.position.set(bx + step, pos.y + bob + 0.11, pos.z + oz + 0.075);
       dummy.rotation.set(0.25, 0, 0);
       dummy.scale.setScalar(holding ? 1 : 0.001);
       dummy.updateMatrix();
       dossiers.setMatrixAt(i, dummy.matrix);
     }
-    window.__inv = invData.map((d, i) => {
-      const u = (laneClock() + d.row * 0.006) % 1;
+    window.__inv = invData.map((d) => {
+      const u = ridingAll ? lcNow : uForRow(d.row, d.lane);
       const pos = walkPath(u, d.lane);
-      const lc2 = laneClock();
-      return { u: +u.toFixed(2), lane: d.lane, y: +pos.y.toFixed(2),
-               cab: +cabinYFor(d.lane).toFixed(2),
-               riding: lc2 >= RIDE_IN && lc2 <= RIDE_OUT };
+      const seat = SEATS[d.lane][d.berth] || [0, 0];
+      return { u: +u.toFixed(3), row: d.row, lane: d.lane,
+               x: +(pos.x + (ridingAll ? seat[0] : (d.lane - 1.5) * 0.34)).toFixed(2),
+               z: +(pos.z + (ridingAll ? seat[1] : 0)).toFixed(2),
+               y: +pos.y.toFixed(2),
+               cab: +cabinYFor(d.lane).toFixed(2), riding: ridingAll };
     });
     bodies.instanceMatrix.needsUpdate = true;
     heads.instanceMatrix.needsUpdate = true;
@@ -1166,12 +1237,13 @@ function boot() {
     // name tags follow their Investigator and always face the camera
     for (let i = 0; i < COUNT; i++) {
       const d = invData[i];
-      const u = (laneClock() + d.row * 0.006) % 1;
+      const u = ridingAll ? lcNow : uForRow(d.row, d.lane);
       const pos = walkPath(u, d.lane);
-      const lc = laneClock();
-      const ridingNow = lc >= RIDE_IN && lc <= RIDE_OUT;
-      tags[i].position.set(pos.x + (ridingNow ? (d.berth - 2) * 0.092 : 0),
-                           pos.y + 0.335, pos.z);
+      tags[i].position.set(
+        pos.x + (ridingAll ? (SEATS[d.lane][d.berth] || [0, 0])[0] : (d.lane - 1.5) * 0.34),
+        pos.y + 0.335,
+        pos.z + (ridingAll ? (SEATS[d.lane][d.berth] || [0, 0])[1] : 0),
+      );
       tags[i].quaternion.copy(camera.quaternion);
     }
 
